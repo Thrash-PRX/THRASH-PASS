@@ -1,0 +1,11 @@
+{
+  "name": "thrash-pass",
+  "version": "2.1.2",
+  "private": true,
+  "scripts": {
+    "test": "node scripts/validate.mjs && node --test tests/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

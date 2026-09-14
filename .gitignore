@@ -1,0 +1,8 @@
+node_modules/
+.env
+.env.*
+*.log
+*.zip
+.DS_Store
+Thumbs.db
+coverage/
