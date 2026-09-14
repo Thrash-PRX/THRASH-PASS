@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -15,10 +16,10 @@ for (const file of fs.readdirSync(root).filter(f => f.endsWith('.js'))) {
   const result = spawnSync(process.execPath, ['--check', path.join(root, file)], {encoding:'utf8'});
   assert.equal(result.status, 0, result.stderr);
 }
-for (const [size, ref] of Object.entries(manifest.icons)) {
+const originalIcons = JSON.parse(fs.readFileSync('scripts/original-icon-hashes.json'));
+for (const [ref, hash] of Object.entries(originalIcons)) {
   const data = fs.readFileSync(path.join(root, ref));
-  assert.equal(data.readUInt32BE(16), Number(size), `${ref} width`);
-  assert.equal(data.readUInt32BE(20), Number(size), `${ref} height`);
+  assert.equal(createHash('sha256').update(data).digest('hex'), hash, `${ref} must match the original artwork exactly`);
 }
 const html = fs.readFileSync(path.join(root, 'popup.html'), 'utf8');
 for (const match of html.matchAll(/(?:src|href)="([^"#:]+)"/g)) {
@@ -27,4 +28,4 @@ for (const match of html.matchAll(/(?:src|href)="([^"#:]+)"/g)) {
 for (const match of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)) {
   assert.equal(match[1].trim(), '', 'Inline executable script');
 }
-console.log('Package valid: manifest references, JS syntax, popup assets, version, and PNG dimensions.');
+console.log('Package valid: manifest references, JS syntax, popup assets, version, and original icon integrity.');

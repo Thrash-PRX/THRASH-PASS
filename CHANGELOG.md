@@ -12,3 +12,8 @@
 - Handle popup action errors and avoid empty screenshot requests and duplicate submissions.
 - Preserve existing configuration keys, provider adapters, Gemini retry/fallback behavior, and editor integrations.
 - Add documentation, artwork, package checks, and regression tests.
+
+### Original icon restoration
+
+- Restored all four icon PNG files byte-for-byte from the uploaded archive, without resizing or recompression.
+- Validate their SHA-256 hashes to prevent accidental artwork changes.

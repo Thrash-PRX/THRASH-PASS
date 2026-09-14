@@ -2,7 +2,7 @@
 
 Run `npm test` with Node.js 20+. No external packages or API credentials are needed.
 
-Automated checks cover manifest references, version consistency, JavaScript syntax, PNG dimensions, popup assets, provider payload adapters, settings provider-switch behavior, Presentation Mode gates, screenshot target checks, invalid endpoints, missing keys, and sensitive input exclusion. Browser and provider APIs are mocked; this does not establish live provider compatibility.
+Automated checks cover manifest references, version consistency, JavaScript syntax, original icon SHA-256 integrity, popup assets, provider payload adapters, settings provider-switch behavior, Presentation Mode gates, screenshot target checks, invalid endpoints, missing keys, and sensitive input exclusion. Browser and provider APIs are mocked; this does not establish live provider compatibility.
 
 Manual release checklist:
 
