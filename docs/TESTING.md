@@ -14,11 +14,13 @@ Manual release checklist:
 6. Enable Presentation Mode on an existing page; confirm the panel disappears and new requests are blocked. Disable it, refresh, and open again.
 7. Verify on your intended Chrome/Edge version and site.
 
-Known limitations: live AI calls require user credentials; site editors vary; contenteditable cursor restoration and framework-controlled fields can be imperfect; body text is truncated without semantic selection; screenshots may include the overlay; page content may contain prompt injection; Gemini fallback model identity is not shown; running requests/insertion are not cancelled by Presentation Mode. Pages initialized while Presentation Mode is on need refresh after it is off.
+Known limitations: live AI calls require user credentials; site editors vary; contenteditable cursor restoration and framework-controlled fields can be imperfect; body text is truncated without semantic selection; screenshots may include the overlay; page content may contain prompt injection; running requests/insertion are not cancelled by Presentation Mode. Pages initialized while Presentation Mode is on need refresh after it is off.
 
 This release is not claimed to be store-reviewed or exhaustively tested across browsers and websites.
 
-## Results for 2.1.2
+## Results for 2.1.3
 
-Package validation and all nine mocked regression tests passed. The settings layout was visually inspected through a local HTTP preview; the expected missing extension-storage error in that preview does not exercise actual extension loading. Live provider calls and the manual browser/editor checklist above were not run. A source scan found no apparent embedded API credentials or dynamic code evaluation.
+Package validation and all fourteen mocked regression tests passed. The settings layout was visually inspected through a local HTTP preview; the expected missing extension-storage error in that preview does not exercise actual extension loading. Live provider calls and the manual browser/editor checklist above were not run. A source scan found no apparent embedded API credentials or dynamic code evaluation.
 
+
+Recovery regression tests cover overload → discovered model success, screenshot preservation, long Retry-After, authentication failure, the six-attempt limit, and cancellation before requests. Live Gemini capacity remains unverified without a provider key.

@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.1.3
+
+- Automatically discover available general-purpose Gemini Flash alternatives after retryable failures.
+- Show retry progress and the successful model in the page panel.
+- Honor Retry-After, increase retry delays, and cap generation attempts at six within a 90-second recovery budget.
+- Stop further page retries when Presentation Mode is enabled or provider credentials change.
+- Preserve original icon bytes and existing saved settings.
+
+
 ## 2.1.2
 
 - Separate installable extension from documentation and development tools.

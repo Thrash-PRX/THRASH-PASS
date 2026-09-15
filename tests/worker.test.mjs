@@ -80,3 +80,40 @@ test('editor targeting rejects sensitive and noneditable inputs, accepts text',a
     assert.equal(Boolean(result),type==='text');
   }
 });
+
+test('automatic recovery discovers models and preserves the screenshot',async()=>{
+  const h=harness();let now=1000;let count=0;const bodies=[];
+  h.context.Date=class extends Date {static now(){return now}};
+  h.context.sleep=async ms=>{now+=ms};
+  h.context.fetch=async(url,opts)=>{
+    if(url.includes(':generateContent')) {
+      bodies.push(JSON.parse(opts.body));
+      if(++count===1)return {ok:false,status:503,headers:{get:()=>null},json:async()=>({error:{message:'high demand'}})};
+      assert.match(url,/gemini-9-flash/);
+      return {ok:true,json:async()=>({candidates:[{content:{parts:[{text:'recovered'}]}}]})};
+    }
+    return {ok:true,json:async()=>({models:[{name:'models/gemini-9-flash',supportedGenerationMethods:['generateContent']},{name:'models/gemini-9-flash-image',supportedGenerationMethods:['generateContent']}]})};
+  };
+  const answer=await vm.runInContext("geminiGenerateWithFallback('test','old-model','question','data:image/png;base64,AA==')",h.context);
+  assert.equal(answer,'recovered');assert.equal(count,2);assert.deepEqual(bodies[0],bodies[1]);
+});
+test('long Retry-After stops recovery instead of retrying early',async()=>{
+  const h=harness();let generated=0;
+  h.context.fetch=async url=>url.includes(':generateContent')?(generated++,{ok:false,status:429,headers:{get:()=> '120'},json:async()=>({error:{message:'quota'}})}):{ok:true,json:async()=>({models:[]})};
+  await assert.rejects(vm.runInContext("geminiGenerateWithFallback('test','model','hi')",h.context),/rate or quota/);
+  assert.equal(generated,1);
+});
+test('authentication failures are never retried',async()=>{
+  const h=harness();let count=0;
+  h.context.fetch=async()=>{count++;return {ok:false,status:403,headers:{get:()=>null},json:async()=>({error:{message:'key rejected'}})}};
+  await assert.rejects(vm.runInContext("geminiGenerateWithFallback('test','model','hi')",h.context),/key rejected/);assert.equal(count,1);
+});
+test('persistent overload stops after six generation attempts',async()=>{
+  const h=harness();let now=1000,count=0;
+  h.context.Date=class extends Date {static now(){return now}};h.context.sleep=async ms=>{now+=ms};
+  h.context.fetch=async url=>url.includes(':generateContent')?(count++,{ok:false,status:503,headers:{get:()=>null},json:async()=>({error:{message:'busy'}})}):{ok:true,json:async()=>({models:[]})};
+  await assert.rejects(vm.runInContext("geminiGenerateWithFallback('test','model','hi')",h.context),/automatic recovery stopped/);assert.equal(count,6);
+});
+test('recovery guard can cancel before any provider request',async()=>{
+  const h=harness();await assert.rejects(vm.runInContext("geminiGenerateWithFallback('test','model','hi',null,()=>{},async()=>{throw new Error('cancelled')})",h.context),/cancelled/);assert.equal(h.calls.length,0);
+});

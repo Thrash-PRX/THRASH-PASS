@@ -208,6 +208,7 @@
   });
 
   chrome.runtime.onMessage.addListener(msg => {
+    if (msg.action === 'aiProgress' && askButton.disabled) status.textContent = msg.text;
     if (msg.action === 'openAssistant') open(msg.text);
     if (msg.action === 'askSelection') open(window.getSelection()?.toString() || '');
   });

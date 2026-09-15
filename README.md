@@ -4,7 +4,7 @@
 
 ![THRASH-PASS](docs/assets/banner.svg)
 
-Manifest V3 · Version 2.1.2 · Chrome / Chromium · No build step · Bring your own API key
+Manifest V3 · Version 2.1.3 · Chrome / Chromium · No build step · Bring your own API key
 
 ## Features
 
@@ -48,6 +48,12 @@ The toggle saves immediately. Enabling it removes active panels, stops editor ta
 Each question sends your request **plus up to 20,000 characters of visible page text** to your configured provider. Screenshot adds the visible tab image, potentially including the assistant panel and private information. The package has no project-operated backend, analytics, or saved conversation history.
 
 Keys live in `chrome.storage.local`, not an encrypted vault. Broad HTTP/HTTPS permissions support page integration and custom endpoints. An endpoint override receives your key; use trusted endpoints. See [Privacy and permissions](docs/PRIVACY.md).
+
+## Automatic Gemini recovery
+
+Enabled automatically in v2.1.3. Your selected model is tried first. On overload, temporary service failures, rate limits, or an unavailable model, THRASH-PASS queries Gemini for currently listed general-purpose Flash alternatives, waits with increasing delays, and switches automatically. The panel shows progress and the model that answered. Your saved model and provider are not changed.
+
+Recovery is limited to six generation attempts and a 90-second budget, with up to 25 seconds per fetch. Longer provider Retry-After delays stop recovery instead of being shortened. Authentication errors stop immediately. Turning Presentation Mode on stops further page retries. Model discovery does not guarantee capacity or image support; if all attempts fail, retry later. Different models can have different quality and prices.
 
 ## Troubleshooting
 

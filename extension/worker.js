@@ -1,19 +1,8 @@
 const DEFAULTS = { provider: 'gemini', model: 'gemini-3.8-flash', endpoint: '', apiKey: '', presentationMode: false };
-const GEMINI_FALLBACK_MODELS = [
-  'gemini-3.8-flash',
-  'gemini-3.7-flash',
-  'gemini-3.6-flash',
-  'gemini-3.5-flash',
-  'gemini-3.5-flash-lite',
-  'gemini-3.1-flash-lite',
-  'gemini-2.5-flash',
-  'gemini-2.5-flash-lite'
-];
-
-const GEMINI_TRANSIENT_STATUS = new Set([408, 429, 500, 502, 503, 504]);
 const GEMINI_FALLBACK_STATUS = new Set([404, 408, 429, 500, 502, 503, 504]);
-const FETCH_TIMEOUT_MS = 45000;
-const GEMINI_TOTAL_ATTEMPT_BUDGET = 8;
+const FETCH_TIMEOUT_MS = 25000;
+const GEMINI_TOTAL_ATTEMPT_BUDGET = 6;
+const GEMINI_RECOVERY_MS = 90000;
 
 async function cfg() {
   const s = await chrome.storage.local.get(DEFAULTS);
@@ -46,7 +35,7 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS)
   }
 }
 
-async function geminiGenerateOnce(apiKey, model, prompt, imageDataUrl = null) {
+async function geminiGenerateOnce(apiKey, model, prompt, imageDataUrl = null, timeoutMs = FETCH_TIMEOUT_MS) {
   const parts = [{ text: prompt }];
   if (imageDataUrl) {
     const m = imageDataUrl.match(/^data:([^;]+);base64,(.+)$/);
@@ -59,7 +48,7 @@ async function geminiGenerateOnce(apiKey, model, prompt, imageDataUrl = null) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contents: [{ role: 'user', parts }] })
-    }
+    }, timeoutMs
   );
 
   const data = await r.json().catch(() => ({}));
@@ -79,60 +68,79 @@ async function geminiGenerateOnce(apiKey, model, prompt, imageDataUrl = null) {
   return answer;
 }
 
-function backoffMs(error, attemptIndex) {
-  const exponential = 900 * (2 ** attemptIndex) + Math.floor(Math.random() * 350);
-  return Math.min(8000, Math.max(error?.retryAfterMs || 0, exponential));
+function recoveryModels(models) {
+  // Automatically select general-purpose Flash models; avoid specialist/output-image models.
+  return models.filter(m => /^gemini-/.test(m) && /flash/.test(m) &&
+    !/image|tts|audio|live|native|robotics|computer-use/.test(m))
+    .sort((a,b) => Number(/preview|exp/.test(a))-Number(/preview|exp/.test(b)) ||
+      Number(/lite/.test(a))-Number(/lite/.test(b)) || b.localeCompare(a, undefined, {numeric:true}));
 }
 
-async function geminiGenerateWithFallback(apiKey, requestedModel, prompt, imageDataUrl = null) {
-  const candidates = [requestedModel, ...GEMINI_FALLBACK_MODELS]
-    .filter((v, i, a) => v && a.indexOf(v) === i);
-
-  let lastError;
-  let totalAttempts = 0;
-
-  for (const model of candidates) {
-    let modelAttempt = 0;
-
-    while (totalAttempts < GEMINI_TOTAL_ATTEMPT_BUDGET) {
-      totalAttempts++;
-      try {
-        return await geminiGenerateOnce(apiKey, model, prompt, imageDataUrl);
-      } catch (error) {
-        lastError = error;
-        const status = error?.status;
-
-        if (!status || !GEMINI_FALLBACK_STATUS.has(status)) throw error;
-
-        // Retry a transient failure once on the same model, then move on.
-        if (GEMINI_TRANSIENT_STATUS.has(status) && modelAttempt === 0 && totalAttempts < GEMINI_TOTAL_ATTEMPT_BUDGET) {
-          await sleep(backoffMs(error, modelAttempt));
-          modelAttempt++;
-          continue;
-        }
-
-        // 404 means unavailable/retired for this key; transient errors may have
-        // model-specific capacity, so try another known stable Flash model.
-        break;
+async function geminiGenerateWithFallback(apiKey, requestedModel, prompt, imageDataUrl = null, progress = () => {}, guard = async () => {}) {
+  const deadline = Date.now() + GEMINI_RECOVERY_MS;
+  const candidates = [requestedModel];
+  const retired = new Set();
+  let discovered = false, lastError, next = 0;
+  for (let attempt = 0; attempt < GEMINI_TOTAL_ATTEMPT_BUDGET; attempt++) {
+    await guard();
+    if (Date.now() >= deadline || !candidates.length) break;
+    const model = candidates[next++ % candidates.length];
+    progress(`Trying ${model} (${attempt+1}/${GEMINI_TOTAL_ATTEMPT_BUDGET})…`);
+    try {
+      const answer = await geminiGenerateOnce(apiKey, model, prompt, imageDataUrl,
+        Math.min(FETCH_TIMEOUT_MS, deadline-Date.now()));
+      await guard();
+      progress(`Answered by ${model}${model !== requestedModel ? ' (automatic fallback)' : ''}.`);
+      return answer;
+    } catch (error) {
+      lastError = error;
+      if (!GEMINI_FALLBACK_STATUS.has(error.status)) throw error;
+      if (error.status === 404) retired.add(model);
+      if (attempt + 1 >= GEMINI_TOTAL_ATTEMPT_BUDGET) break;
+      // Discover once after failure, rather than spending attempts on hard-coded model IDs.
+      if (!discovered && Date.now() < deadline) {
+        discovered = true;
+        progress('Checking available Gemini models…');
+        try {
+          const available = recoveryModels(await listGeminiModels(apiKey, deadline));
+          candidates.push(...available.filter(m => !candidates.includes(m) && !retired.has(m)));
+        } catch (_) { /* Keep retrying the selected model if discovery is unavailable. */ }
       }
+      const remaining = candidates.filter(m => !retired.has(m));
+      candidates.splice(0, candidates.length, ...remaining);
+      if (!candidates.length) break;
+      next = candidates.includes(model) ? candidates.indexOf(model)+1 : 0;
+      const waitMs = error.status === 404 ? 0 : Math.max(error.retryAfterMs || 0,
+        Math.min(12000, 1500 * 2 ** attempt) + Math.floor(Math.random()*300));
+      if (Date.now()+waitMs >= deadline) break; // Never shorten a provider Retry-After delay.
+      if(waitMs) progress(`Gemini is busy. Retrying in ${Math.ceil(waitMs/1000)} seconds…`);
+      const until = Date.now()+waitMs;
+      while(Date.now()<until) { await sleep(Math.min(1000,until-Date.now())); await guard(); }
     }
-
-    if (totalAttempts >= GEMINI_TOTAL_ATTEMPT_BUDGET) break;
   }
-
-  const message = lastError?.message || 'No compatible Gemini model is available for this API key.';
-  throw new Error(`Gemini could not serve the request after ${totalAttempts} attempt${totalAttempts === 1 ? '' : 's'}. Last error: ${message}`);
+  throw new Error(`Gemini automatic recovery stopped. ${lastError?.status === 429 ? 'The provider reported a rate or quota limit.' : 'The available models are still busy or unavailable.'} Please try again later. Last error: ${lastError?.message || 'Recovery time limit reached.'}`);
 }
 
-async function listGeminiModels(apiKey) {
+async function listGeminiModels(apiKey, deadline = Date.now()+25000) {
   if (!apiKey) throw new Error('Add an API key first.');
-  const r = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`);
-  const data = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(data?.error?.message || `Gemini models error ${r.status}`);
-  return (data.models || [])
-    .filter(m => Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes('generateContent'))
-    .map(m => m.name?.replace(/^models\//, ''))
-    .filter(Boolean);
+  const models = [], seen = new Set();
+  let pageToken = '';
+  do {
+    if(Date.now() >= deadline) throw new Error('Model discovery timed out.');
+    const url = new URL('https://generativelanguage.googleapis.com/v1beta/models');
+    url.searchParams.set('key', apiKey);
+    url.searchParams.set('pageSize', '1000');
+    if(pageToken) url.searchParams.set('pageToken', pageToken);
+    const r = await fetchWithTimeout(url.toString(), {}, Math.min(10000,deadline-Date.now()));
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data?.error?.message || `Gemini models error ${r.status}`);
+    models.push(...(data.models || []).filter(m => m.supportedGenerationMethods?.includes('generateContent'))
+      .map(m => m.name?.replace(/^models\//, '')).filter(Boolean));
+    pageToken = data.nextPageToken || '';
+    if(seen.has(pageToken)) throw new Error('Repeated model-list page token.');
+    seen.add(pageToken);
+  } while(pageToken);
+  return [...new Set(models)];
 }
 
 async function readResponseJson(r, label) {
@@ -141,7 +149,7 @@ async function readResponseJson(r, label) {
   return data;
 }
 
-async function callAI(prompt, imageDataUrl = null) {
+async function callAI(prompt, imageDataUrl = null, progress = () => {}, guard = async () => {}) {
   const c = await cfg();
   if (!c.apiKey) throw new Error('Add an API key in THRASH-PASS settings.');
   if (!prompt.trim()) throw new Error('Enter a request first.');
@@ -159,7 +167,7 @@ async function callAI(prompt, imageDataUrl = null) {
   }
 
   if (provider === 'gemini') {
-    return geminiGenerateWithFallback(c.apiKey, c.model || DEFAULTS.model, prompt, imageDataUrl);
+    return geminiGenerateWithFallback(c.apiKey, c.model || DEFAULTS.model, prompt, imageDataUrl, progress, guard);
   }
 
   if (provider === 'openai') {
@@ -241,7 +249,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.action === 'askAI') {
     cfg().then(c => {
       if (c.presentationMode) throw new Error('Presentation Mode is on. Page requests are disabled.');
-      return callAI(String(msg.prompt || ''), msg.imageDataUrl || null);
+      const progress = text => {
+        if (sender.tab?.id) chrome.tabs.sendMessage(sender.tab.id, { action: 'aiProgress', text }, {frameId: 0}).catch(() => {});
+      };
+      const guard = async () => {
+        const current = await cfg();
+        if(current.presentationMode) throw new Error('Presentation Mode is on. Automatic recovery stopped.');
+        if(current.apiKey !== c.apiKey || current.provider !== c.provider) throw new Error('Provider settings changed. Please submit again.');
+      };
+      return callAI(String(msg.prompt || ''), msg.imageDataUrl || null, progress, guard);
     })
       .then(answer => sendResponse({ ok: true, answer }))
       .catch(error => sendResponse({ ok: false, error: error.message }));
