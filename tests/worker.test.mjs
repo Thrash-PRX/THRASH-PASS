@@ -31,6 +31,12 @@ test('settings-side connection test stays available in Presentation Mode',async(
   const h=harness({presentationMode:true,provider:'openai',apiKey:'test-only',model:'test-model'});
   assert.equal((await h.send({action:'testAI'},{})).ok,true);assert.equal(h.calls.length,1);
 });
+test('Gemini connection test makes one request and does not enter recovery',async()=>{
+  const h=harness({apiKey:'test-only'});let count=0;
+  h.context.fetch=async()=>{count++;return {ok:false,status:503,headers:{get:()=>null},json:async()=>({error:{message:'high demand'}})}};
+  const result=await h.send({action:'testAI'},{});
+  assert.equal(result.ok,false);assert.match(result.error,/temporarily overloaded/);assert.equal(count,1);
+});
 test('OpenAI receives text and screenshot and returns plain answer',async()=>{
   const h=harness({provider:'openai',apiKey:'test-only',model:'test-model'});
   const r=await h.send({action:'askAI',prompt:'Explain',imageDataUrl:'data:image/png;base64,AA=='});

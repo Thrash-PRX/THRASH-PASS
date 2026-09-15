@@ -4,7 +4,7 @@
 
 ![THRASH-PASS](docs/assets/banner.svg)
 
-Manifest V3 · Version 2.1.3 · Chrome / Chromium · No build step · Bring your own API key
+Manifest V3 · Version 2.1.4 · Chrome / Chromium · No build step · Bring your own API key
 
 ## Features
 

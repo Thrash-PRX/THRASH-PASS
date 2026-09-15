@@ -3,6 +3,7 @@ const GEMINI_FALLBACK_STATUS = new Set([404, 408, 429, 500, 502, 503, 504]);
 const FETCH_TIMEOUT_MS = 25000;
 const GEMINI_TOTAL_ATTEMPT_BUDGET = 6;
 const GEMINI_RECOVERY_MS = 90000;
+const CONNECTION_TEST_TIMEOUT_MS = 10000;
 
 async function cfg() {
   const s = await chrome.storage.local.get(DEFAULTS);
@@ -206,6 +207,26 @@ async function callAI(prompt, imageDataUrl = null, progress = () => {}, guard = 
   throw new Error('Unknown provider.');
 }
 
+async function testConnection() {
+  const c = await cfg();
+  if (!c.apiKey) throw new Error('Add an API key first.');
+  if (c.provider === 'gemini') {
+    try {
+      const answer = await geminiGenerateOnce(c.apiKey, c.model || DEFAULTS.model,
+        'Reply with exactly: THRASH-PASS OK', null, CONNECTION_TEST_TIMEOUT_MS);
+      return answer;
+    } catch (error) {
+      if (error.status === 400) throw new Error(`Gemini rejected the request: ${error.message}`);
+      if (error.status === 401 || error.status === 403) throw new Error('Gemini rejected this API key. Check the key and its API access.');
+      if (error.status === 404) throw new Error(`Gemini model "${c.model || DEFAULTS.model}" is unavailable for this key. Click Refresh Gemini models and select one from the list.`);
+      if (error.status === 429) throw new Error('Gemini rate limit or free-tier quota reached. Check Google AI Studio quota or try again later.');
+      if ([500, 502, 503, 504].includes(error.status)) throw new Error('Gemini is temporarily overloaded. The key may still be valid; try again later.');
+      throw error;
+    }
+  }
+  return callAI('Reply with exactly: THRASH-PASS OK');
+}
+
 async function createContextMenus() {
   const { presentationMode = false } = await chrome.storage.local.get({ presentationMode: false });
   chrome.contextMenus.removeAll(() => {
@@ -286,7 +307,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 
   if (msg.action === 'testAI') {
-    callAI('Reply with exactly: THRASH-PASS OK')
+    testConnection()
       .then(answer => sendResponse({ ok: true, answer }))
       .catch(error => sendResponse({ ok: false, error: error.message }));
     return true;

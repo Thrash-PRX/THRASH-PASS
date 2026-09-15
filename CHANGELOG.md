@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.4
+
+- Make connection testing use one request with a strict 10-second timeout instead of the normal recovery loop.
+- Report distinct messages for invalid credentials, unavailable models, quota limits, and temporary Gemini overload.
+
 ## 2.1.3
 
 - Automatically discover available general-purpose Gemini Flash alternatives after retryable failures.
