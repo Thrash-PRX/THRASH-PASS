@@ -1,20 +1,10 @@
 (async () => {
-  let { presentationMode = false } = await chrome.storage.local.get({ presentationMode: false });
+  const { presentationMode = false } = await chrome.storage.local.get({ presentationMode: false });
   if (presentationMode) return;
 
   const TARGET_ATTR = 'data-thrash-pass-target';
   const TARGET_TIME_ATTR = 'data-thrash-pass-target-at';
   let markedTarget = null;
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area !== 'local' || !changes.presentationMode) return;
-    presentationMode = !!changes.presentationMode.newValue;
-    if (presentationMode) {
-      document.getElementById('thrash-pass-root')?.remove();
-      markedTarget?.removeAttribute(TARGET_ATTR);
-      markedTarget?.removeAttribute(TARGET_TIME_ATTR);
-      markedTarget = null;
-    }
-  });
 
   function isEditable(el) {
     if (!(el instanceof Element) || el.matches(':disabled, [readonly]')) return false;
@@ -27,7 +17,7 @@
   }
 
   function markTarget(el) {
-    if (presentationMode || !isEditable(el)) return;
+    if (!isEditable(el)) return;
     if (el.id === 'thrash-pass-root' || el.closest?.('#thrash-pass-root')) return;
     try {
       if (markedTarget && markedTarget !== el) {
@@ -59,13 +49,13 @@
   const style = document.createElement('style');
   style.textContent = `
     .tp{position:fixed;right:18px;bottom:18px;width:380px;max-width:calc(100vw - 36px);max-height:76vh;background:#101014;color:#fff;border:1px solid #333;border-radius:14px;z-index:2147483647;box-shadow:0 10px 40px #0008;font:14px system-ui;display:none;overflow:hidden}
-    .head{padding:12px 14px;font-weight:700;border-bottom:1px solid #29292f;display:flex;justify-content:space-between}.x{cursor:pointer;background:none;color:inherit;border:0;font-size:20px}.body{padding:12px}.q{width:100%;box-sizing:border-box;background:#18181d;color:#fff;border:1px solid #38383f;border-radius:9px;padding:10px;resize:vertical;min-height:90px}.row{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}.b{border:0;border-radius:8px;padding:9px 12px;cursor:pointer;background:#fff;color:#111;font:inherit}.b.secondary{background:#27272d;color:#fff}.b.accent{background:#d8ff56;color:#101014;font-weight:700}.b:disabled{opacity:.55;cursor:not-allowed}.ans{white-space:pre-wrap;background:#17171c;border-radius:9px;padding:10px;margin-top:10px;max-height:32vh;overflow:auto}.mini{font-size:11px;opacity:.65;margin-top:7px}.status{font-size:12px;margin-top:8px;min-height:16px;color:#cfcfd6}.tools[hidden]{display:none}@media(max-width:520px){.tp{right:10px;bottom:10px;width:calc(100vw - 20px);max-width:none}.b{flex:1}}
+    .head{padding:12px 14px;font-weight:700;border-bottom:1px solid #29292f;display:flex;justify-content:space-between}.x{cursor:pointer}.body{padding:12px}.q{width:100%;box-sizing:border-box;background:#18181d;color:#fff;border:1px solid #38383f;border-radius:9px;padding:10px;resize:vertical;min-height:90px}.row{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}.b{border:0;border-radius:8px;padding:9px 12px;cursor:pointer;background:#fff;color:#111;font:inherit}.b.secondary{background:#27272d;color:#fff}.b.accent{background:#d8ff56;color:#101014;font-weight:700}.b:disabled{opacity:.55;cursor:not-allowed}.ans{white-space:pre-wrap;background:#17171c;border-radius:9px;padding:10px;margin-top:10px;max-height:32vh;overflow:auto}.mini{font-size:11px;opacity:.65;margin-top:7px}.status{font-size:12px;margin-top:8px;min-height:16px;color:#cfcfd6}.tools[hidden]{display:none}@media(max-width:520px){.tp{right:10px;bottom:10px;width:calc(100vw - 20px);max-width:none}.b{flex:1}}
   `;
   shadow.append(style);
 
   const box = document.createElement('div');
   box.className = 'tp';
-  box.innerHTML = `<div class="head"><span>THRASH-PASS</span><button class="x" aria-label="Close assistant">×</button></div><div class="body"><textarea aria-label="Your request" class="q" placeholder="Ask anything about the selected text or page..."></textarea><div class="row"><button class="b ask">Ask AI</button><button class="b secondary shot">Screenshot</button></div><div class="mini">Sends your request and up to 20,000 characters of page text to your provider. Screenshot also sends the visible tab image.</div><div class="ans" hidden></div><div class="row tools" hidden><button class="b accent paste">Paste code</button><button class="b secondary type">Auto-type</button><button class="b secondary copy">Copy</button></div><div class="status"></div></div>`;
+  box.innerHTML = `<div class="head"><span>THRASH-PASS</span><span class="x">×</span></div><div class="body"><textarea class="q" placeholder="Ask anything about the selected text or page..."></textarea><div class="row"><button class="b ask">Ask AI</button><button class="b secondary shot">Screenshot</button></div><div class="mini">Uses the provider configured in the extension.</div><div class="ans" hidden></div><div class="row tools" hidden><button class="b accent paste">Paste code</button><button class="b secondary type">Auto-type</button><button class="b secondary copy">Copy</button></div><div class="status"></div></div>`;
   shadow.append(box);
   document.documentElement.append(root);
 
@@ -80,11 +70,10 @@
   const status = shadow.querySelector('.status');
 
   function pageText() {
-    return document.body?.innerText?.slice(0, 20000) || '';
+    return document.body?.innerText?.slice(0, 12000) || '';
   }
 
   function open(text = '') {
-    if (presentationMode || !root.isConnected) return;
     box.style.display = 'block';
     q.value = text || window.getSelection()?.toString() || '';
     status.textContent = '';
@@ -104,7 +93,6 @@
   }
 
   async function ask(imageDataUrl = null) {
-    if (presentationMode || askButton.disabled && !imageDataUrl) return;
     const question = q.value.trim();
     if (!question) {
       ans.hidden = false;
@@ -187,7 +175,6 @@
   copyButton.onclick = copyAnswer;
 
   shotButton.onclick = async () => {
-    if (!q.value.trim()) { status.textContent = 'Type a request before capturing.'; return; }
     ans.hidden = false;
     ans.textContent = 'Capturing screenshot…';
     tools.hidden = true;
@@ -208,7 +195,6 @@
   });
 
   chrome.runtime.onMessage.addListener(msg => {
-    if (msg.action === 'aiProgress' && askButton.disabled) status.textContent = msg.text;
     if (msg.action === 'openAssistant') open(msg.text);
     if (msg.action === 'askSelection') open(window.getSelection()?.toString() || '');
   });
