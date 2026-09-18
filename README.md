@@ -31,8 +31,6 @@ This is a manually installed extension, not a Chrome Web Store listing. Node.js 
 4. Select page text and right-click **Ask THRASH-PASS about selection**, right-click the page, or press **Ctrl+Shift+Y** (**Command+Shift+Y** on Mac).
 5. Enter a request and click **Ask AI**, or press **Ctrl/Command+Enter**. **Screenshot** sends that request with a visible-tab image.
 
-Changing providers clears the unsaved key and endpoint and chooses a provider-specific default model. Enter the new provider's credentials before saving.
-
 ## Insert an answer
 
 Click the destination editor first, then **Paste code** or **Auto-type** in the assistant. The first fenced code block is used when present; otherwise the whole answer is inserted. Existing selected text may be replaced. **Copy** uses the same extraction rule.
@@ -45,20 +43,28 @@ The toggle saves immediately. Enabling it removes active panels, stops editor ta
 
 ## Privacy
 
-Each question sends your request **plus up to 20,000 characters of visible page text** to your configured provider. Screenshot adds the visible tab image, potentially including the assistant panel and private information. The package has no project-operated backend, analytics, or saved conversation history.
+Each question sends your request **plus up to 12,000 characters of visible page text** to your configured provider. Screenshot adds the visible tab image, potentially including the assistant panel and private information. The package has no project-operated backend, analytics, or saved conversation history.
 
 Keys live in `chrome.storage.local`, not an encrypted vault. Broad HTTP/HTTPS permissions support page integration and custom endpoints. An endpoint override receives your key; use trusted endpoints. See [Privacy and permissions](docs/PRIVACY.md).
 
-## Automatic Gemini recovery
+## Gemini recovery (v2.1.4 preferred build)
 
-Enabled automatically in v2.1.3. Your selected model is tried first. On overload, temporary service failures, rate limits, or an unavailable model, THRASH-PASS queries Gemini for currently listed general-purpose Flash alternatives, waits with increasing delays, and switches automatically. The panel shows progress and the model that answered. Your saved model and provider are not changed.
+Your selected model is tried first. On overload, temporary failures, rate limits, or an unavailable model, THRASH-PASS falls back through an ordered list of general-purpose Flash models that have proven reliable in practice:
 
-Recovery is limited to six generation attempts and a 90-second budget, with up to 25 seconds per fetch. Longer provider Retry-After delays stop recovery instead of being shortened. Authentication errors stop immediately. Turning Presentation Mode on stops further page retries. Model discovery does not guarantee capacity or image support; if all attempts fail, retry later. Different models can have different quality and prices.
+- gemini-3.5-flash-lite
+- gemini-3.7-flash
+- gemini-3.6-flash
+- gemini-3.5-flash
+- gemini-3.1-flash-lite
+- gemini-2.5-flash-lite
+- gemini-2.5-flash
+
+Requests use a 120-second timeout and, for Gemini 3 models, `thinkingLevel: "low"` for lower latency. Up to five generation attempts are made. Authentication errors stop immediately. Progress messages show which model is being tried.
 
 ## Troubleshooting
 
 - **Panel missing:** refresh the page, disable Presentation Mode, and check `chrome://extensions/shortcuts`. Browser-internal and extension-store pages restrict content scripts.
-- **Authentication/model error:** check the key, provider, model access, and endpoint. Gemini retries transient failures and may fall back to another model, affecting results and costs.
+- **Authentication/model error:** check the key, provider, model access, and endpoint. Gemini retries transient failures and may fall back to another model.
 - **Screenshot fails:** use Gemini/OpenAI with an image-capable model and keep the requesting tab active.
 - **Insertion fails:** click inside the destination again or use Copy.
 

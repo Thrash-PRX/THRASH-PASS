@@ -2,13 +2,15 @@
 
 Unbundled Manifest V3 extension with no production dependencies.
 
-- popup.html / popup.css / popup.js: settings, model discovery, testing, Presentation Mode.
+- popup.html / popup.js: settings, model discovery, testing, Presentation Mode (styles inlined).
 - contentScript.js: editor tracking in HTTP/HTTPS frames; floating assistant in a closed shadow root in the top frame only.
 - worker.js: provider calls, shortcuts, menus, capture, and editor insertion through MAIN-world scripts.
 
 Gemini uses generateContent and inline images. OpenAI uses chat completions with text/image content. Kimi and Custom support text requests; screenshots produce an explicit unsupported-provider error.
 
-Gemini tries the saved model first. After a retryable failure it discovers paginated generateContent models, filters general-purpose Flash alternatives, and rotates candidates with increasing delays. Specialist image/audio/live models are excluded from automatic selection. Missing models (404) are removed. Six generation attempts and a 90-second recovery budget prevent endless retries. Fetches use at most 25 seconds; discovery pages use at most 10 seconds within the budget. Retry-After is never shortened. Invalid credentials stop immediately. Progress messages identify attempts and the successful model. Saved settings remain unchanged. Page retry guards stop on Presentation Mode or a changed provider/key.
+### Gemini recovery (preferred 2.1.4 build)
+
+The saved model is tried first. On retryable failure the worker walks a fixed, ordered list of general-purpose Flash models that have proven reliable. Specialist image/audio/live models are not used for automatic fallback. Requests use a 120-second timeout; Gemini 3 models receive `thinkingConfig.thinkingLevel = "low"` for lower first-token latency. Up to five generation attempts are made. Authentication errors stop immediately. Progress messages identify the current model. Saved settings are never changed by recovery.
 
 Storage keys, DOM markers, commands, and menu IDs are preserved. Updating an unpacked extension in the same folder preserves its installation; loading a new path can create a separate installation that needs configuration.
 

@@ -2,7 +2,7 @@
 
 Run `npm test` with Node.js 20+. No external packages or API credentials are needed.
 
-Automated checks cover manifest references, version consistency, JavaScript syntax, original icon SHA-256 integrity, popup assets, provider payload adapters, settings provider-switch behavior, Presentation Mode gates, screenshot target checks, invalid endpoints, missing keys, and sensitive input exclusion. Browser and provider APIs are mocked; this does not establish live provider compatibility.
+Automated checks cover manifest references, version consistency, JavaScript syntax, original icon SHA-256 integrity, popup assets, provider payload adapters, Presentation Mode gates, screenshot target checks, invalid endpoints, missing keys, and sensitive input exclusion. Browser and provider APIs are mocked; this does not establish live provider compatibility.
 
 Manual release checklist:
 
@@ -18,9 +18,6 @@ Known limitations: live AI calls require user credentials; site editors vary; co
 
 This release is not claimed to be store-reviewed or exhaustively tested across browsers and websites.
 
-## Results for 2.1.3
+## Results for 2.1.4 (preferred build)
 
-Package validation and all fourteen mocked regression tests passed. The settings layout was visually inspected through a local HTTP preview; the expected missing extension-storage error in that preview does not exercise actual extension loading. Live provider calls and the manual browser/editor checklist above were not run. A source scan found no apparent embedded API credentials or dynamic code evaluation.
-
-
-Recovery regression tests cover overload → discovered model success, screenshot preservation, long Retry-After, authentication failure, the six-attempt limit, and cancellation before requests. Live Gemini capacity remains unverified without a provider key.
+Package validation and core regression tests pass against the restored preferred runtime (120 s timeouts, ordered Flash fallbacks, Gemini 3 thinkingLevel). Live provider calls and the full manual browser/editor checklist should still be exercised with a real API key before distribution.
