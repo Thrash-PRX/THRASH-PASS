@@ -43,8 +43,6 @@ async function withBusy(button, busyText, task) {
   button.textContent = busyText;
   try {
     return await task();
-  } catch (error) {
-    $('status').textContent = `Error: ${error.message || 'Operation failed'}`;
   } finally {
     button.disabled = false;
     button.textContent = oldText;
@@ -60,17 +58,9 @@ $('presentationMode').addEventListener('change', async () => {
   chrome.runtime.sendMessage({ action: 'syncPresentationMode' }).catch(() => {});
 });
 
-$('provider').addEventListener('change', () => {
-  const models = { gemini: DEFAULTS.model, openai: 'gpt-4o-mini', kimi: 'moonshot-v1-8k', custom: '' };
-  $('model').value = models[$('provider').value];
-  $('endpoint').value = '';
-  $('apiKey').value = '';
-  $('modelList').replaceChildren();
-  $('status').textContent = 'Provider changed. Enter its API key and model, then save.';
-  toggleProviderFields();
-});
+$('provider').addEventListener('change', toggleProviderFields);
 
-$('save').onclick = () => withBusy($('save'), 'Saving…', () => saveSettings(true));
+$('save').onclick = () => saveSettings(true);
 
 $('test').onclick = async () => {
   await withBusy($('test'), 'Testing…', async () => {
