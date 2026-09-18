@@ -2,8 +2,9 @@
 
 ## 2.1.4
 
-- Make connection testing use one request with a strict 10-second timeout instead of the normal recovery loop.
-- Report distinct messages for invalid credentials, unavailable models, quota limits, and temporary Gemini overload.
+- Restored the preferred runtime build with longer request timeouts (120s), explicit Gemini 3 thinkingLevel=low, and the ordered hard-coded Flash fallback list that proved more reliable in practice.
+- Retained resilient AI retries, editor insertion (Monaco / CodeMirror / Ace / contenteditable), and Presentation Mode.
+- Updated package version to 2.1.4 across the installable extension.
 
 ## 2.1.3
 
@@ -12,7 +13,6 @@
 - Honor Retry-After, increase retry delays, and cap generation attempts at six within a 90-second recovery budget.
 - Stop further page retries when Presentation Mode is enabled or provider credentials change.
 - Preserve original icon bytes and existing saved settings.
-
 
 ## 2.1.2
 

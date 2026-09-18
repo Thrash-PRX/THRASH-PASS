@@ -3,7 +3,7 @@
   "name": "THRASH-PASS",
   "short_name": "THRASH-PASS",
   "version": "2.1.4",
-  "description": "Standalone browser AI assistant with user-configured AI providers and a presentation-safe inactive mode.",
+  "description": "Standalone browser AI assistant with resilient AI retries, editor insertion, and a presentation-safe inactive mode.",
   "permissions": [
     "storage",
     "activeTab",
@@ -12,6 +12,9 @@
     "scripting"
   ],
   "host_permissions": [
+    "https://generativelanguage.googleapis.com/*",
+    "https://api.openai.com/*",
+    "https://api.moonshot.cn/*",
     "https://*/*",
     "http://*/*"
   ],
@@ -24,8 +27,7 @@
       "16": "images/icon16.png",
       "48": "images/icon48.png",
       "128": "images/icon128.png"
-    },
-    "default_title": "THRASH-PASS \u2014 Settings"
+    }
   },
   "content_scripts": [
     {
