@@ -23,23 +23,70 @@ Manifest V3 · Version 2.1.4 · Chrome / Chromium · No build step · Bring your
 
 This is a manually installed extension, not a Chrome Web Store listing. Node.js is not needed to use it.
 
-## Configure and ask
+## Tutorial: Get an API key and start using THRASH-PASS
 
-1. Click the toolbar icon, choose a provider, enter its API key and model ID, then **Save settings**.
-2. Gemini users can **Refresh Gemini models** to find models available to their key. Custom requires the complete chat-completions endpoint URL and a model ID.
-3. **Test connection** sends a small test prompt. Both Test and Refresh also save your current settings.
-4. Select page text and right-click **Ask THRASH-PASS about selection**, right-click the page, or press **Ctrl+Shift+Y** (**Command+Shift+Y** on Mac).
-5. Enter a request and click **Ask AI**, or press **Ctrl/Command+Enter**. **Screenshot** sends that request with a visible-tab image.
+### 1. Get an API key from your provider
 
-## Insert an answer
+Pick one provider and create a key:
 
-Click the destination editor first, then **Paste code** or **Auto-type** in the assistant. The first fenced code block is used when present; otherwise the whole answer is inserted. Existing selected text may be replaced. **Copy** uses the same extraction rule.
+| Provider | Where to get a key | Typical free / starter model |
+| --- | --- | --- |
+| **Google Gemini** | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | `gemini-2.5-flash` or `gemini-3.8-flash` |
+| **OpenAI** | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) | `gpt-4o-mini` |
+| **Kimi / Moonshot** | [platform.moonshot.cn](https://platform.moonshot.cn) | `moonshot-v1-8k` |
+| **Custom** | Your own OpenAI-compatible server | Whatever model ID your server exposes |
 
-Supports text inputs, textareas, contenteditable, and accessible Monaco, CodeMirror 5, and Ace integrations. Site-specific editors may reject insertion; Copy is the fallback. Password, email, numeric, disabled, and read-only fields are excluded. The extension does not submit forms or execute generated code.
+- Gemini: sign in with a Google account → Create API key → copy it.
+- OpenAI: create an account / log in → API keys → Create new secret key → copy it (you only see it once).
+- Kimi / Moonshot: register → API Key management → create and copy the key.
+- Custom: you need the full chat-completions URL (for example `https://your-server/v1/chat/completions`) and a model name.
 
-## Presentation Mode
+Keep the key private. THRASH-PASS stores it only in your browser (`chrome.storage.local`).
 
-The toggle saves immediately. Enabling it removes active panels, stops editor targeting, removes assistant context menus, and blocks new page AI requests, captures, and insertions. Refresh webpages after disabling it. Already-running requests or auto-typing may finish; enable it before presenting. Settings-side connection tests remain available.
+### 2. Add the key in the extension
+
+1. Click the **THRASH-PASS** icon in the Chrome toolbar.
+2. Choose the **AI provider** (Gemini, OpenAI, Kimi, or Custom).
+3. Paste your **API key**.
+4. Enter a **Model ID** (or leave the default for that provider).
+5. For Custom only: fill in the full **endpoint** URL.
+6. Click **Save settings**.
+7. Click **Test connection**. You should see a short success message (for example `Connected: THRASH-PASS OK`).
+
+Optional for Gemini:
+- Click **Refresh Gemini models** to list models available to your key, then pick one from the dropdown.
+
+### 3. Use the assistant on any webpage
+
+1. Open a normal webpage and refresh it once after installing the extension.
+2. Select some text (optional) and either:
+   - Right-click → **Ask THRASH-PASS about selection**, or
+   - Press **Ctrl+Shift+Y** (Mac: **⌘+Shift+Y**), or
+   - Right-click the page → ask about the page.
+3. A floating panel appears. Type your question and click **Ask AI** (or press Ctrl/⌘+Enter).
+4. To include a screenshot of the visible tab, click **Screenshot** instead.
+5. When the answer arrives you can:
+   - **Copy** the answer
+   - **Paste code** into the last editor you focused
+   - **Auto-type** the answer character-by-character into that editor
+
+Supported insertion targets: text inputs, textareas, contenteditable areas, and common Monaco / CodeMirror 5 / Ace editors.
+
+### 4. Presentation Mode (optional)
+
+Turn **Presentation Mode** on in the popup when you do not want the assistant visible.
+
+- The floating panel is removed.
+- New page requests, screenshots, and insertions are blocked.
+- Context menus and the keyboard shortcut stop working until you turn it off and refresh the page.
+
+### Quick checklist if something does not work
+
+- Refresh the webpage after loading or reloading the extension.
+- Confirm the key and model with **Test connection**.
+- Make sure Presentation Mode is off.
+- For screenshots: stay on the same tab and use Gemini or OpenAI with a vision-capable model.
+- For insertion: click inside the destination field first, then press Paste code / Auto-type.
 
 ## Privacy
 
