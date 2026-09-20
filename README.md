@@ -115,6 +115,14 @@ Requests use a 120-second timeout and, for Gemini 3 models, `thinkingLevel: "low
 - **Screenshot fails:** use Gemini/OpenAI with an image-capable model and keep the requesting tab active.
 - **Insertion fails:** click inside the destination again or use Copy.
 
+## Video tutorial
+
+This 2-minute 49-second walkthrough shows the complete setup: installing the unpacked extension, creating a Gemini API key in Google AI Studio, refreshing and testing Gemini models, asking about page content, using screenshots, inserting answers, automatic model recovery, and Presentation Mode.
+
+[![Watch the THRASH-PASS setup and usage tutorial](docs/assets/tutorial-poster.jpg)](docs/assets/thrash-pass-tutorial.mp4)
+
+[▶ Watch or download the full 1080p tutorial](docs/assets/thrash-pass-tutorial.mp4)
+
 ## Development
 
 Run `npm test` with Node.js 20+. No dependency installation is needed. Load `extension/` directly and reload it after edits.
