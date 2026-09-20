@@ -119,9 +119,9 @@ Requests use a 120-second timeout and, for Gemini 3 models, `thinkingLevel: "low
 
 This 2-minute 49-second walkthrough shows the complete setup: installing the unpacked extension, creating a Gemini API key in Google AI Studio, refreshing and testing Gemini models, asking about page content, using screenshots, inserting answers, automatic model recovery, and Presentation Mode.
 
-[![Watch the THRASH-PASS setup and usage tutorial](docs/assets/tutorial-poster.jpg)](https://raw.githubusercontent.com/Thrash-PRX/THRASH-PASS/main/docs/assets/thrash-pass-tutorial.mp4)
+[![Watch the THRASH-PASS setup and usage tutorial](docs/assets/tutorial-poster.jpg)](https://thrash-prx.github.io/THRASH-PASS/tutorial.html)
 
-[▶ Play the full 1080p tutorial](https://raw.githubusercontent.com/Thrash-PRX/THRASH-PASS/main/docs/assets/thrash-pass-tutorial.mp4)
+[▶ Play the full 1080p tutorial](https://thrash-prx.github.io/THRASH-PASS/tutorial.html)
 
 ## Development
 
