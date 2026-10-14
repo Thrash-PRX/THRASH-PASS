@@ -5,3 +5,5 @@ Source: user-supplied THRASH-PASS-v2.1.1-presentation-mode.zip.
 The original already used THRASH-PASS in the manifest, popup, assistant, and editor markers. Version 2.1.2 preserves those identities and adds consistent settings branding, organization, documentation, and fixes.
 
 Original PNG artwork is preserved byte-for-byte from the supplied archive, without resizing or recompression. The documentation banner is new SVG artwork. No license or attribution file was included in the supplied archive. No new reuse license has been asserted; the owner should establish licensing before redistribution by others.
+
+Version 2.1.5 integrates the user-supplied THRASH-PASS-v2.1.3-fixed.zip. Its runtime fixes supersede the 2.1.4 runtime. Original artwork, repository structure, and tutorial assets are retained. The supplied verification report is historical evidence, not a fresh 2.1.5 test result.

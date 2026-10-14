@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.1.5 — 2026-10-14
+
+- Integrate THRASH-PASS-v2.1.3-fixed.zip as the next release after 2.1.4.
+- Replace fixed Gemini fallback IDs and 120-second fetch timeouts with account-based discovery and bounded 25-second requests.
+- Add shared settings defaults, isolated provider profiles, and the popup Open assistant action.
+- Apply Presentation Mode changes immediately; suppress duplicate requests and late answers, and stop auto-type when targets are cleared.
+- Hide the overlay during capture, support custom vision endpoints, and improve selection restoration/editor error reporting.
+- Refresh popup branding and display v2.1.5 in both popup and page assistant. Preserve artwork, storage keys, tutorial, and repository layout.
+
+
 ## 2.1.4
 
 - Restored the preferred runtime build with longer request timeouts (120s), explicit Gemini 3 thinkingLevel=low, and the ordered hard-coded Flash fallback list that proved more reliable in practice.

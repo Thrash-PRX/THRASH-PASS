@@ -2,18 +2,15 @@
 
 Unbundled Manifest V3 extension with no production dependencies.
 
-- popup.html / popup.js: settings, model discovery, testing, Presentation Mode (styles inlined).
-- contentScript.js: editor tracking in HTTP/HTTPS frames; floating assistant in a closed shadow root in the top frame only.
-- worker.js: provider calls, shortcuts, menus, capture, and editor insertion through MAIN-world scripts.
+- settings.js: shared defaults loaded by the popup and service worker.
+- popup.html / popup.css / popup.js: provider profiles, model discovery, connection testing, Presentation Mode, and page opening.
+- contentScript.js: editor tracking in HTTP/HTTPS frames and a top-frame assistant in a closed shadow root.
+- worker.js: provider calls, shortcuts, menus, capture, and MAIN-world editor insertion.
 
-Gemini uses generateContent and inline images. OpenAI uses chat completions with text/image content. Kimi and Custom support text requests; screenshots produce an explicit unsupported-provider error.
+Gemini discovers account-available general-purpose models with pagination and bounded fallback. Requests use 25-second deadlines including response bodies. Authentication failures stop immediately. Gemini has at most four generation attempts across three candidates; other providers have at most two attempts. Message operations have a bounded overall deadline and keep the worker responsive while pending.
 
-### Gemini recovery (preferred 2.1.4 build)
+OpenAI and custom compatible endpoints receive text/image payloads. Kimi screenshots fail explicitly. API keys, models, and endpoints are stored separately per provider, with the existing active-provider storage keys retained for upgrades.
 
-The saved model is tried first. On retryable failure the worker walks a fixed, ordered list of general-purpose Flash models that have proven reliable. Specialist image/audio/live models are not used for automatic fallback. Requests use a 120-second timeout; Gemini 3 models receive `thinkingConfig.thinkingLevel = "low"` for lower first-token latency. Up to five generation attempts are made. Authentication errors stop immediately. Progress messages identify the current model. Saved settings are never changed by recovery.
+Presentation Mode updates initialized content scripts immediately, removes the overlay, clears editor markers, stops auto-type on the next chunk, and suppresses late results. Already-sent provider requests cannot be recalled.
 
-Storage keys, DOM markers, commands, and menu IDs are preserved. Updating an unpacked extension in the same folder preserves its installation; loading a new path can create a separate installation that needs configuration.
-
-Enabling Presentation Mode updates initialized content scripts and gates new page actions in the worker. Pages that skipped initialization need refresh when it is disabled. Running work is not cancelled.
-
-Editor targeting uses recent focus markers across frames. Insertion uses Monaco, CodeMirror 5, Ace APIs when exposed, otherwise DOM operations. Closed shadow DOM limits style collisions but is not a security boundary. Website text and generated code are untrusted. AI output is never evaluated by the extension.
+Editor insertion uses exposed Monaco, CodeMirror 5, and Ace APIs or supported DOM fields. Website text is untrusted reference material. AI output is displayed as text and never evaluated by the extension.

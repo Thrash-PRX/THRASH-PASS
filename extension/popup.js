@@ -1,96 +1,81 @@
 const $ = id => document.getElementById(id);
-const DEFAULTS = { provider: 'gemini', apiKey: '', model: 'gemini-3.8-flash', endpoint: '', presentationMode: false };
-
-async function load() {
-  const s = await chrome.storage.local.get(DEFAULTS);
-  $('provider').value = s.provider;
-  $('apiKey').value = s.apiKey;
-  $('model').value = s.model;
-  $('endpoint').value = s.endpoint;
-  $('presentationMode').checked = !!s.presentationMode;
-  toggleProviderFields();
+const DEFAULTS = TP_SETTINGS.defaults;
+let profiles = {};
+let selectedProvider = DEFAULTS.provider;
+let busy = false;
+function currentProfile() {
+  return { apiKey: $('apiKey').value.trim(), model: $('model').value.trim(), endpoint: $('endpoint').value.trim() };
 }
-
 function toggleProviderFields() {
   const gemini = $('provider').value === 'gemini';
-  $('model').placeholder = gemini ? 'gemini-3.8-flash' : 'Provider model ID';
-  $('endpoint').disabled = gemini;
-  $('endpoint').placeholder = gemini ? 'Not used for Gemini' : 'https://.../v1/chat/completions';
-  $('refreshModels').disabled = !gemini;
+  $('model').placeholder = gemini ? 'Automatic: discover available models' : TP_SETTINGS.providers[$('provider').value].model || 'Required model ID';
+  $('endpoint').disabled = gemini || busy;
+  $('endpoint').placeholder = gemini ? 'Not used for Gemini' : TP_SETTINGS.providers[$('provider').value].endpoint || 'https://.../v1/chat/completions';
+  $('refreshModels').disabled = !gemini || busy;
 }
-
-function currentSettings() {
-  const provider = $('provider').value;
-  return {
-    provider,
-    apiKey: $('apiKey').value.trim(),
-    model: $('model').value.trim() || (provider === 'gemini' ? 'gemini-3.8-flash' : ''),
-    endpoint: $('endpoint').value.trim(),
-    presentationMode: $('presentationMode').checked
-  };
+function showProfile(provider) {
+  const p = profiles[provider] || { ...TP_SETTINGS.providers[provider], apiKey: '' };
+  for (const field of ['apiKey', 'model', 'endpoint']) $(field).value = p[field] || '';
+  $('modelList').replaceChildren();
+  toggleProviderFields();
 }
-
-async function saveSettings(showStatus = true) {
-  const settings = currentSettings();
-  await chrome.storage.local.set(settings);
-  if (showStatus) $('status').textContent = 'Saved.';
-  return settings;
+async function load() {
+  const s = await chrome.storage.local.get({ ...DEFAULTS, providerProfiles: {} });
+  profiles = s.providerProfiles || {};
+  selectedProvider = TP_SETTINGS.providers[s.provider] ? s.provider : DEFAULTS.provider;
+  profiles[selectedProvider] = { apiKey: s.apiKey, model: s.model, endpoint: s.endpoint };
+  $('provider').value = selectedProvider;
+  $('presentationMode').checked = !!s.presentationMode;
+  showProfile(selectedProvider);
 }
-
-async function withBusy(button, busyText, task) {
-  const oldText = button.textContent;
-  button.disabled = true;
-  button.textContent = busyText;
-  try {
-    return await task();
-  } finally {
-    button.disabled = false;
-    button.textContent = oldText;
+async function saveSettings() {
+  profiles[selectedProvider] = currentProfile();
+  await chrome.storage.local.set({ provider: selectedProvider, ...profiles[selectedProvider], providerProfiles: profiles, presentationMode: $('presentationMode').checked });
+}
+async function run(task) {
+  if (busy) return;
+  busy = true;
+  for (const el of document.querySelectorAll('button, input, select')) el.disabled = true;
+  try { await task(); }
+  catch (error) { $('status').textContent = `Error: ${error.message || 'Operation failed. Reload the extension and try again.'}`; }
+  finally {
+    busy = false;
+    for (const el of document.querySelectorAll('button, input, select')) el.disabled = false;
     toggleProviderFields();
   }
 }
-
-$('presentationMode').addEventListener('change', async () => {
+$('provider').addEventListener('change', () => {
+  profiles[selectedProvider] = currentProfile();
+  selectedProvider = $('provider').value;
+  showProfile(selectedProvider);
+  $('status').textContent = 'Enter this provider’s settings, then save.';
+});
+$('presentationMode').addEventListener('change', () => run(async () => {
   await chrome.storage.local.set({ presentationMode: $('presentationMode').checked });
-  $('status').textContent = $('presentationMode').checked
-    ? 'Presentation Mode ON. THRASH-PASS will be inactive on webpages. Refresh already-open pages once.'
-    : 'Presentation Mode OFF. Refresh already-open pages to enable THRASH-PASS again.';
-  chrome.runtime.sendMessage({ action: 'syncPresentationMode' }).catch(() => {});
+  $('status').textContent = $('presentationMode').checked ? 'Presentation Mode ON. Page actions are disabled.' : 'Presentation Mode OFF. Page actions are enabled.';
+}));
+$('save').onclick = () => run(async () => { await saveSettings(); $('status').textContent = 'Saved.'; });
+$('test').onclick = () => run(async () => {
+  $('status').textContent = 'Testing current settings…';
+  await saveSettings();
+  const r = await chrome.runtime.sendMessage({ action: 'testAI' });
+  $('status').textContent = r?.ok ? `Connected: ${r.answer}` : `Error: ${r?.error || 'No response. Reload the extension.'}`;
 });
-
-$('provider').addEventListener('change', toggleProviderFields);
-
-$('save').onclick = () => saveSettings(true);
-
-$('test').onclick = async () => {
-  await withBusy($('test'), 'Testing…', async () => {
-    $('status').textContent = 'Testing current settings…';
-    await saveSettings(false);
-    const r = await chrome.runtime.sendMessage({ action: 'testAI' });
-    $('status').textContent = r?.ok ? `Connected: ${r.answer}` : `Error: ${r?.error || 'failed'}`;
-  });
-};
-
-$('refreshModels').onclick = async () => {
-  await withBusy($('refreshModels'), 'Loading…', async () => {
-    $('status').textContent = 'Loading available Gemini models…';
-    await saveSettings(false);
-    const r = await chrome.runtime.sendMessage({ action: 'listGeminiModels' });
-    if (!r?.ok) {
-      $('status').textContent = `Error: ${r?.error || 'failed'}`;
-      return;
-    }
-    const models = r.models.filter(m => /^gemini-/.test(m));
-    $('modelList').innerHTML = '';
-    for (const m of models) {
-      const o = document.createElement('option');
-      o.value = m;
-      $('modelList').appendChild(o);
-    }
-    $('status').textContent = `Found ${models.length} compatible Gemini models.`;
-  });
-};
-
-load().catch(error => {
-  $('status').textContent = `Load error: ${error.message}`;
+$('refreshModels').onclick = () => run(async () => {
+  $('status').textContent = 'Loading available Gemini models…';
+  await saveSettings();
+  const r = await chrome.runtime.sendMessage({ action: 'listGeminiModels' });
+  if (!r?.ok) throw new Error(r?.error || 'Model discovery failed.');
+  $('modelList').replaceChildren();
+  for (const model of r.models) {
+    const o = document.createElement('option'); o.value = model; $('modelList').append(o);
+  }
+  $('status').textContent = `Found ${r.models.length} models. Leave Model blank for automatic selection.`;
 });
+$('open').onclick = () => run(async () => {
+  await saveSettings();
+  const r = await chrome.runtime.sendMessage({ action: 'openFromPopup' });
+  if (!r?.ok) throw new Error(r?.error || 'Could not open the assistant.');
+  window.close();
+});
+run(load);

@@ -4,7 +4,7 @@
 
 ![THRASH-PASS](docs/assets/banner.svg)
 
-Manifest V3 · Version 2.1.4 · Chrome / Chromium · No build step · Bring your own API key
+Manifest V3 · Version 2.1.5 · Chrome / Chromium · No build step · Bring your own API key
 
 ## Features
 
@@ -31,7 +31,7 @@ Pick one provider and create a key:
 
 | Provider | Where to get a key | Typical free / starter model |
 | --- | --- | --- |
-| **Google Gemini** | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | `gemini-2.5-flash` or `gemini-3.8-flash` |
+| **Google Gemini** | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | Leave Model blank for account-based discovery |
 | **OpenAI** | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) | `gpt-4o-mini` |
 | **Kimi / Moonshot** | [platform.moonshot.cn](https://platform.moonshot.cn) | `moonshot-v1-8k` |
 | **Custom** | Your own OpenAI-compatible server | Whatever model ID your server exposes |
@@ -78,7 +78,7 @@ Turn **Presentation Mode** on in the popup when you do not want the assistant vi
 
 - The floating panel is removed.
 - New page requests, screenshots, and insertions are blocked.
-- Context menus and the keyboard shortcut stop working until you turn it off and refresh the page.
+- Context menus and the keyboard shortcut stop working until you turn it off. Changes apply immediately to open webpages.
 
 ### Quick checklist if something does not work
 
@@ -90,23 +90,22 @@ Turn **Presentation Mode** on in the popup when you do not want the assistant vi
 
 ## Privacy
 
-Each question sends your request **plus up to 12,000 characters of visible page text** to your configured provider. Screenshot adds the visible tab image, potentially including the assistant panel and private information. The package has no project-operated backend, analytics, or saved conversation history.
+Each question sends your request **plus up to 12,000 characters of visible page text** to your configured provider. Screenshot adds the visible tab image, including any private information visible on the page; the assistant hides during capture. The package has no project-operated backend, analytics, or saved conversation history.
 
 Keys live in `chrome.storage.local`, not an encrypted vault. Broad HTTP/HTTPS permissions support page integration and custom endpoints. An endpoint override receives your key; use trusted endpoints. See [Privacy and permissions](docs/PRIVACY.md).
 
-## Gemini recovery (v2.1.4 preferred build)
+## Gemini recovery (v2.1.5)
 
-Your selected model is tried first. On overload, temporary failures, rate limits, or an unavailable model, THRASH-PASS falls back through an ordered list of general-purpose Flash models that have proven reliable in practice:
+Leave Model blank to discover compatible Gemini models available to your account. A selected model is tried first; fallback uses discovered general-purpose models rather than a fixed list of model IDs. Discovery follows pagination, with a bounded page limit.
 
-- gemini-3.5-flash-lite
-- gemini-3.7-flash
-- gemini-3.6-flash
-- gemini-3.5-flash
-- gemini-3.1-flash-lite
-- gemini-2.5-flash-lite
-- gemini-2.5-flash
+Each request has a 25-second deadline covering headers and response-body reading. Retryable failures receive bounded retries; authentication errors stop immediately. Gemini uses up to four generation attempts across at most three candidate models. Other providers use up to two attempts.
 
-Requests use a 120-second timeout and, for Gemini 3 models, `thinkingLevel: "low"` for lower latency. Up to five generation attempts are made. Authentication errors stop immediately. Progress messages show which model is being tried.
+## What changed in 2.1.5
+
+- Integrated the supplied fixed build, including shared provider defaults and separate saved provider profiles.
+- Added **Open assistant on this page** to the popup.
+- Improved immediate Presentation Mode updates, screenshot handling, and editor insertion.
+- Updated version labels and settings branding while retaining THRASH-PASS artwork.
 
 ## Troubleshooting
 

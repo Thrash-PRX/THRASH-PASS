@@ -13,8 +13,9 @@ function harness(settings = {}, response = {choices:[{message:{content:'OK'}}]})
     tabs:{query:async()=>[{id:7}],captureVisibleTab:async()=>{captures++;return 'data:image/png;base64,AA=='},sendMessage:async()=>{}},
     scripting:{executeScript:async()=>[]}
   };
-  const context=vm.createContext({chrome,URL,AbortController,setTimeout,clearTimeout,console,
-    fetch:async(url,opts)=>{calls.push({url,opts});return {ok:true,json:async()=>response}}});
+  const context=vm.createContext({chrome,URL,AbortController,setTimeout,clearTimeout,setInterval,clearInterval,console,
+    fetch:async(url,opts)=>{calls.push({url,opts});return {ok:true,text:async()=>JSON.stringify(url.includes('/models?') ? {models:[{name:'models/gemini-test-flash',supportedGenerationMethods:['generateContent']}]} : response)}}});
+  context.importScripts=()=>vm.runInContext(fs.readFileSync('extension/settings.js','utf8'),context);
   vm.runInContext(source,context);
   return {context,calls,chrome,get captures(){return captures},
     send:(msg,sender={tab:{id:7,windowId:1}})=>new Promise(resolve=>listener(msg,sender,resolve))};
@@ -41,14 +42,14 @@ test('OpenAI receives text and screenshot and returns plain answer',async()=>{
 test('Gemini payload and response adapter',async()=>{
   const h=harness({apiKey:'test-only'},{candidates:[{content:{parts:[{text:'Gemini OK'}]}}]});
   assert.equal((await h.send({action:'askAI',prompt:'Explain',imageDataUrl:'data:image/png;base64,AA=='})).answer,'Gemini OK');
-  assert.equal(JSON.parse(h.calls[0].opts.body).contents[0].parts[1].inline_data.mime_type,'image/png');
+  assert.equal(JSON.parse(h.calls.find(c=>c.url.includes(':generateContent')).opts.body).contents[0].parts[1].inline_data.mime_type,'image/png');
 });
-test('Kimi and custom text adapters work; screenshots fail explicitly',async()=>{
+test('Kimi and custom text adapters work; only Kimi screenshots fail explicitly',async()=>{
   for(const provider of ['kimi','custom']) {
     const h=harness({provider,apiKey:'test-only',model:'test-model',endpoint:'https://example.test/v1/chat/completions'});
     assert.equal((await h.send({action:'askAI',prompt:'Explain'})).answer,'OK');
     const r=await h.send({action:'askAI',prompt:'Explain',imageDataUrl:'data:image/png;base64,AA=='});
-    assert.equal(r.ok,false);assert.match(r.error,/Screenshot requests/);assert.equal(h.calls.length,1);
+    if(provider==='kimi') {assert.equal(r.ok,false);assert.match(r.error,/Screenshot requests/);assert.equal(h.calls.length,1);} else {assert.equal(r.answer,'OK');assert.equal(JSON.parse(h.calls[1].opts.body).messages[0].content[1].type,'image_url');}
   }
 });
 test('screenshot rejects another active tab and unknown sender',async()=>{
@@ -67,7 +68,7 @@ test('bad endpoints and missing keys produce useful errors',async()=>{
 test('editor targeting rejects sensitive and noneditable inputs, accepts text',async()=>{
   const h=harness();
   class Element {
-    constructor(type,disabled=false){this.type=type;this.disabled=disabled;this.tagName='INPUT'}
+    constructor(type,disabled=false){this.type=type;this.disabled=disabled;this.tagName='INPUT';this.isConnected=true}
     matches(sel){if(sel.includes(':disabled'))return this.disabled;if(sel==='input')return true;return false}
     getAttribute(name){return name==='type'?this.type:'1'}
     closest(){return null}
@@ -86,16 +87,16 @@ test('Gemini ordered fallback tries next model after transient failure',async()=
   h.context.fetch=async(url,opts)=>{
     if(url.includes(':generateContent')) {
       count++;
-      if(count===1) return {ok:false,status:503,headers:{get:()=>null},json:async()=>({error:{message:'high demand'}})};
-      return {ok:true,json:async()=>({candidates:[{content:{parts:[{text:'recovered'}]}}]})};
+      if(count===1) return {ok:false,status:503,headers:{get:()=>null},text:async()=>JSON.stringify({error:{message:'high demand'}})};
+      return {ok:true,text:async()=>JSON.stringify({candidates:[{content:{parts:[{text:'recovered'}]}}]})};
     }
-    return {ok:true,json:async()=>({models:[]})};
+    return {ok:true,text:async()=>JSON.stringify({models:[]})};
   };
   const answer=await vm.runInContext("geminiGenerateWithFallback('test','gemini-3.8-flash','question')",h.context);
   assert.equal(answer,'recovered');assert.ok(count>=2);
 });
 test('authentication failures are never retried',async()=>{
   const h=harness();let count=0;
-  h.context.fetch=async()=>{count++;return {ok:false,status:403,headers:{get:()=>null},json:async()=>({error:{message:'key rejected'}})}};
+  h.context.fetch=async()=>{count++;return {ok:false,status:403,headers:{get:()=>null},text:async()=>JSON.stringify({error:{message:'key rejected'}})}};
   await assert.rejects(vm.runInContext("geminiGenerateWithFallback('test','model','hi')",h.context),/key rejected/);assert.equal(count,1);
 });

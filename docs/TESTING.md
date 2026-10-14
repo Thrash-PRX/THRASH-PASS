@@ -2,22 +2,21 @@
 
 Run `npm test` with Node.js 20+. No external packages or API credentials are needed.
 
-Automated checks cover manifest references, version consistency, JavaScript syntax, original icon SHA-256 integrity, popup assets, provider payload adapters, Presentation Mode gates, screenshot target checks, invalid endpoints, missing keys, and sensitive input exclusion. Browser and provider APIs are mocked; this does not establish live provider compatibility.
+## 2.1.5 verification — 14 October 2026
 
-Manual release checklist:
+Package validation and all 11 repository regression tests passed. Checks cover manifest references, shared settings/JavaScript syntax, version consistency, popup assets, original icon SHA-256 integrity, provider payload adapters, account-based Gemini discovery and bounded fallback, authentication failure handling, Presentation Mode gates, screenshot target checks, invalid endpoints, missing keys, sensitive input exclusion, and switching/restoring provider profiles.
 
-1. Load `extension/` unpacked and check the extension error panel.
-2. Configure each available provider, test it, and refresh Gemini models.
-3. Open from page/selection menus and keyboard shortcut on an ordinary webpage.
-4. Send text and screenshots with a vision-capable provider; switch tabs during capture.
-5. Copy/paste/auto-type into textareas, contenteditable, frames, Monaco, CodeMirror 5, and Ace where available.
-6. Enable Presentation Mode on an existing page; confirm the panel disappears and new requests are blocked. Disable it, refresh, and open again.
-7. Verify on your intended Chrome/Edge version and site.
+Browser and provider APIs in the repository tests are mocked. No live provider credentials were used. This does not certify live model access, provider billing/quotas, arbitrary third-party editors, or every browser version.
 
-Known limitations: live AI calls require user credentials; site editors vary; contenteditable cursor restoration and framework-controlled fields can be imperfect; body text is truncated without semantic selection; screenshots may include the overlay; page content may contain prompt injection; running requests/insertion are not cancelled by Presentation Mode. Pages initialized while Presentation Mode is on need refresh after it is off.
+The supplied ZIP also included a historical 37-check report, retained in [SUPPLIED-BUILD-TEST-RESULTS.md](SUPPLIED-BUILD-TEST-RESULTS.md). Those checks have not all been rerun for this release.
 
-This release is not claimed to be store-reviewed or exhaustively tested across browsers and websites.
+## Manual release checklist
 
-## Results for 2.1.4 (preferred build)
+1. Load extension/ unpacked and check the extension error panel.
+2. Configure available providers, test connection, and refresh Gemini models.
+3. Open via popup, menus, and shortcut on an ordinary webpage.
+4. Exercise real screenshots and supported editors, including frames.
+5. Toggle Presentation Mode during a request and auto-type; verify immediate suppression and stop behavior.
+6. Check intended Chrome/Edge versions and sites.
 
-Package validation and core regression tests pass against the restored preferred runtime (120 s timeouts, ordered Flash fallbacks, Gemini 3 thinkingLevel). Live provider calls and the full manual browser/editor checklist should still be exercised with a real API key before distribution.
+The extension cannot recall already-sent provider requests. Site editor APIs may be inaccessible or reject programmatic edits; use Copy/manual paste in those cases. Page text and screenshots may contain private information. Browser-internal and extension-store pages restrict injection.

@@ -4,14 +4,14 @@ THRASH-PASS sends requests directly to your configured AI endpoint, without a pr
 
 | Action | Data and destination |
 | --- | --- |
-| Ask AI | Request plus first 20,000 characters of body.innerText to provider |
-| Screenshot | Same text plus visible-tab PNG to Gemini/OpenAI |
+| Ask AI | Request plus first 12,000 characters of body.innerText to provider |
+| Screenshot | Same text plus visible-tab PNG to Gemini/OpenAI or a custom vision-compatible provider |
 | Test connection | Fixed short test prompt and authentication to provider |
 | Refresh Gemini models | Authentication to Google's model-list API |
 | Paste / Auto-type | Extracted answer to the selected webpage editor; the website may observe/store it |
 | Copy | Extracted answer to system clipboard |
 
-Page text can contain private data and untrusted instructions. Screenshots include visible information and can include the assistant panel. Excluding password fields from insertion does not redact screenshots.
+Page text can contain private data and untrusted instructions. Screenshots include visible information ; the assistant panel hides during capture. Excluding password fields from insertion does not redact screenshots.
 
 Settings and API keys use chrome.storage.local. This is not an encrypted vault; the extension's own content scripts can access it under Chrome's default rules. The password field merely masks the popup display. No conversation history is persisted by this extension; provider retention and billing depend on your account. Answers remain in page memory until the page closes/reloads.
 
@@ -24,8 +24,8 @@ Settings and API keys use chrome.storage.local. This is not an encrypted vault; 
 | scripting | Editor discovery/insertion including frames |
 | HTTP/HTTPS hosts | Cross-site page integration and custom endpoint requests |
 
-Broad host access is retained for compatibility; redundant provider-specific entries were removed. The extension does not fetch remote executable code. Responses are displayed as plain text and inserted only when the user clicks an insertion button.
+Broad host access and provider-specific entries are retained from the supplied build. The extension does not fetch remote executable code. Responses are displayed as plain text and inserted only when the user clicks an insertion button.
 
-Presentation Mode blocks new page operations but does not cancel work in progress. Disable/remove the extension to stop it completely. Clear and save the API key field, or uninstall, to remove saved credentials. Use HTTPS for remote endpoints; HTTP remains supported for local servers.
+Presentation Mode blocks new page operations, suppresses late answers, clears editor targets, and stops auto-type on its next chunk. Requests already sent to a provider cannot be recalled. Disable/remove the extension to stop it completely. Clear and save the API key for each configured provider, or uninstall, to remove saved credentials. Use HTTPS for remote endpoints; HTTP remains supported for local servers.
 
 Reference: [Chrome extension storage](https://developer.chrome.com/docs/extensions/reference/api/storage/).

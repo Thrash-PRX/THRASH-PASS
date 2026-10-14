@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "THRASH-PASS",
   "short_name": "THRASH-PASS",
-  "version": "2.1.4",
+  "version": "2.1.5",
   "description": "Standalone browser AI assistant with resilient AI retries, editor insertion, and a presentation-safe inactive mode.",
   "permissions": [
     "storage",
@@ -27,7 +27,8 @@
       "16": "images/icon16.png",
       "48": "images/icon48.png",
       "128": "images/icon128.png"
-    }
+    },
+    "default_title": "THRASH-PASS \u2014 Your page. Your AI provider."
   },
   "content_scripts": [
     {
@@ -55,5 +56,6 @@
     "16": "images/icon16.png",
     "48": "images/icon48.png",
     "128": "images/icon128.png"
-  }
+  },
+  "minimum_chrome_version": "110"
 }
