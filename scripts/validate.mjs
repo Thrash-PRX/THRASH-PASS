@@ -8,6 +8,9 @@ const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json')));
 assert.equal(manifest.manifest_version, 3);
 assert.equal(manifest.name, 'THRASH-PASS');
 assert.equal(manifest.version, JSON.parse(fs.readFileSync('package.json')).version);
+const updateInfo = JSON.parse(fs.readFileSync('update.json'));
+assert.equal(updateInfo.version, manifest.version, 'update.json must advertise the packaged version');
+for (const permission of ['alarms', 'notifications']) assert.ok(manifest.permissions.includes(permission), `Missing ${permission} permission`);
 const refs = [manifest.background.service_worker, manifest.action.default_popup,
   ...Object.values(manifest.icons), ...Object.values(manifest.action.default_icon),
   ...manifest.content_scripts.flatMap(s => s.js)];

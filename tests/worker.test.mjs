@@ -4,20 +4,22 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 const source = fs.readFileSync('extension/worker.js','utf8');
 function harness(settings = {}, response = {choices:[{message:{content:'OK'}}]}) {
-  let listener; const calls = []; let captures = 0;
+  let listener; const calls = []; const notifications = []; let captures = 0;
   const event = {addListener(){}};
   const chrome = {
-    storage:{local:{get: async defaults => ({...defaults, ...settings})},onChanged:event},
-    runtime:{onInstalled:event,onStartup:event,onMessage:{addListener(fn){listener=fn}}},
+    storage:{local:{get: async defaults => ({...defaults, ...settings}),set:async values=>Object.assign(settings,values)},onChanged:event},
+    runtime:{getManifest:()=>({version:'2.2.0'}),onInstalled:event,onStartup:event,onMessage:{addListener(fn){listener=fn}}},
+    action:{setBadgeBackgroundColor:async()=>{},setBadgeText:async()=>{}},
+    alarms:{create(){},onAlarm:event},notifications:{create:async(id,options)=>notifications.push({id,options}),clear:async()=>{},onClicked:event},
     contextMenus:{removeAll(cb){cb()},create(){},onClicked:event}, commands:{onCommand:event},
-    tabs:{query:async()=>[{id:7}],captureVisibleTab:async()=>{captures++;return 'data:image/png;base64,AA=='},sendMessage:async()=>{}},
+    tabs:{query:async()=>[{id:7}],create:async()=>{},captureVisibleTab:async()=>{captures++;return 'data:image/png;base64,AA=='},sendMessage:async()=>{}},
     scripting:{executeScript:async()=>[]}
   };
   const context=vm.createContext({chrome,URL,AbortController,setTimeout,clearTimeout,setInterval,clearInterval,console,
     fetch:async(url,opts)=>{calls.push({url,opts});return {ok:true,text:async()=>JSON.stringify(url.includes('/models?') ? {models:[{name:'models/gemini-test-flash',supportedGenerationMethods:['generateContent']}]} : response)}}});
   context.importScripts=()=>vm.runInContext(fs.readFileSync('extension/settings.js','utf8'),context);
   vm.runInContext(source,context);
-  return {context,calls,chrome,get captures(){return captures},
+  return {context,calls,chrome,notifications,get captures(){return captures},
     send:(msg,sender={tab:{id:7,windowId:1}})=>new Promise(resolve=>listener(msg,sender,resolve))};
 }
 test('Presentation Mode blocks AI, screenshot, and insertion without provider traffic',async()=>{
@@ -99,4 +101,15 @@ test('authentication failures are never retried',async()=>{
   const h=harness();let count=0;
   h.context.fetch=async()=>{count++;return {ok:false,status:403,headers:{get:()=>null},text:async()=>JSON.stringify({error:{message:'key rejected'}})}};
   await assert.rejects(vm.runInContext("geminiGenerateWithFallback('test','model','hi')",h.context),/key rejected/);assert.equal(count,1);
+});
+
+test('update checker detects newer semantic versions and notifies only once',async()=>{
+  const settings={};const h=harness(settings);
+  h.context.fetch=async()=>({ok:true,text:async()=>JSON.stringify({version:'2.3.0',page:'https://github.com/Thrash-PRX/THRASH-PASS/releases'})});
+  const first=await vm.runInContext('checkForExtensionUpdate({notify:true})',h.context);
+  assert.equal(first.updateAvailable,true);assert.equal(first.latestVersion,'2.3.0');assert.equal(h.notifications.length,1);
+  await vm.runInContext('checkForExtensionUpdate({notify:true})',h.context);
+  assert.equal(h.notifications.length,1);
+  assert.equal(vm.runInContext("compareVersions('2.2.0','2.2.0')",h.context),0);
+  assert.equal(vm.runInContext("compareVersions('2.2.1','2.2.0')",h.context),1);
 });

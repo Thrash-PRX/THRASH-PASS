@@ -8,6 +8,7 @@ THRASH-PASS sends requests directly to your configured AI endpoint, without a pr
 | Screenshot | Same text plus visible-tab PNG to Gemini/OpenAI or a custom vision-compatible provider |
 | Test connection | Fixed short test prompt and authentication to provider |
 | Refresh Gemini models | Authentication to Google's model-list API |
+| Check for updates | Current published version metadata from the public GitHub repository; no key, prompt, page content, or setting is sent |
 | Paste / Auto-type | Extracted answer to the selected webpage editor; the website may observe/store it |
 | Copy | Extracted answer to system clipboard |
 
@@ -17,14 +18,16 @@ Settings and API keys use chrome.storage.local. This is not an encrypted vault; 
 
 | Permission | Reason |
 | --- | --- |
-| storage | Configuration and Presentation Mode |
+| storage | Configuration, Presentation Mode, and update status |
 | activeTab | User-invoked page access and capture |
 | contextMenus | Page and selection entry points |
 | tabs | Active-tab lookup, messages, screenshot target check |
 | scripting | Editor discovery/insertion including frames |
+| alarms | Run an update check every six hours |
+| notifications | Tell the user once when a newer version is available |
 | HTTP/HTTPS hosts | Cross-site page integration and custom endpoint requests |
 
-Broad host access and provider-specific entries are retained from the supplied build. The extension does not fetch remote executable code. Responses are displayed as plain text and inserted only when the user clicks an insertion button.
+Broad host access and provider-specific entries are retained from the supplied build. The extension fetches version metadata from `raw.githubusercontent.com`, but never fetches or runs remote executable code. Responses are displayed as plain text and inserted only when the user clicks an insertion button.
 
 Presentation Mode blocks new page operations, suppresses late answers, clears editor targets, and stops auto-type on its next chunk. Requests already sent to a provider cannot be recalled. Disable/remove the extension to stop it completely. Clear and save the API key for each configured provider, or uninstall, to remove saved credentials. Use HTTPS for remote endpoints; HTTP remains supported for local servers.
 

@@ -2,6 +2,18 @@ importScripts('settings.js');
 const DEFAULTS = TP_SETTINGS.defaults;
 const TRANSIENT_STATUS = new Set([408, 429, 500, 502, 503, 504]);
 const REQUEST_TIMEOUT_MS = 25000;
+const UPDATE_CHECK_ALARM = 'thrash-pass-update-check';
+const UPDATE_CHECK_INTERVAL_MINUTES = 360;
+const UPDATE_INFO_URL = 'https://raw.githubusercontent.com/Thrash-PRX/THRASH-PASS/main/update.json';
+const UPDATE_PAGE_URL = 'https://github.com/Thrash-PRX/THRASH-PASS#update-thrash-pass';
+const UPDATE_STATE_DEFAULTS = {
+  updateAvailable: false,
+  latestVersion: '',
+  updatePageUrl: UPDATE_PAGE_URL,
+  lastUpdateCheck: 0,
+  lastUpdateError: '',
+  lastNotifiedVersion: ''
+};
 
 async function cfg() {
   const s = await chrome.storage.local.get(DEFAULTS);
@@ -89,6 +101,93 @@ async function geminiGenerateOnce(apiKey, model, prompt, imageDataUrl) {
   return answer;
 }
 
+function compareVersions(left, right) {
+  const parse = value => {
+    const [main, prerelease = ''] = String(value || '').trim().replace(/^v/i, '').split('-', 2);
+    if (!/^\d+(?:\.\d+)*$/.test(main)) return null;
+    return { parts: main.split('.').map(Number), prerelease };
+  };
+  const a = parse(left);
+  const b = parse(right);
+  if (!a || !b) throw new Error('The update service returned an invalid version.');
+  const length = Math.max(a.parts.length, b.parts.length);
+  for (let i = 0; i < length; i++) {
+    const difference = (a.parts[i] || 0) - (b.parts[i] || 0);
+    if (difference) return Math.sign(difference);
+  }
+  if (a.prerelease === b.prerelease) return 0;
+  if (!a.prerelease) return 1;
+  if (!b.prerelease) return -1;
+  return a.prerelease.localeCompare(b.prerelease);
+}
+
+function trustedUpdatePage(value) {
+  try {
+    const url = new URL(value);
+    const path = url.pathname.toLowerCase();
+    if (url.protocol === 'https:' && url.hostname === 'github.com' && (path === '/thrash-prx/thrash-pass' || path.startsWith('/thrash-prx/thrash-pass/'))) return url.toString();
+  } catch (_) {}
+  return UPDATE_PAGE_URL;
+}
+
+async function fetchUpdateInfo() {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10000);
+  try {
+    const response = await fetch(UPDATE_INFO_URL, { cache: 'no-store', headers: { Accept: 'application/json' }, redirect: 'error', signal: controller.signal });
+    const raw = await response.text();
+    if (!response.ok) throw new Error('Update service returned ' + response.status + '.');
+    try { return JSON.parse(raw); }
+    catch { throw new Error('The update service returned invalid data.'); }
+  } catch (error) {
+    if (controller.signal.aborted) throw new Error('The update check timed out.');
+    throw error;
+  } finally { clearTimeout(timer); }
+}
+
+async function setUpdateBadge(available) {
+  await chrome.action.setBadgeBackgroundColor({ color: '#d8ff56' });
+  await chrome.action.setBadgeText({ text: available ? 'NEW' : '' });
+}
+
+async function getUpdateStatus() {
+  const state = await chrome.storage.local.get(UPDATE_STATE_DEFAULTS);
+  return { ...UPDATE_STATE_DEFAULTS, ...state, currentVersion: chrome.runtime.getManifest().version };
+}
+
+async function checkForExtensionUpdate({ notify = false } = {}) {
+  const previous = await getUpdateStatus();
+  try {
+    const info = await fetchUpdateInfo();
+    const latestVersion = String(info?.version || '').trim().replace(/^v/i, '');
+    const currentVersion = chrome.runtime.getManifest().version;
+    const updateAvailable = compareVersions(latestVersion, currentVersion) > 0;
+    const state = {
+      updateAvailable,
+      latestVersion,
+      updatePageUrl: trustedUpdatePage(info?.page),
+      lastUpdateCheck: Date.now(),
+      lastUpdateError: ''
+    };
+    await chrome.storage.local.set(state);
+    await setUpdateBadge(updateAvailable);
+    if (notify && updateAvailable && previous.lastNotifiedVersion !== latestVersion) {
+      await chrome.notifications.create('thrash-pass-update-' + latestVersion, {
+        type: 'basic',
+        iconUrl: 'images/icon128.png',
+        title: 'THRASH-PASS update available',
+        message: 'Version ' + latestVersion + ' is ready. Click to view the update guide.',
+        priority: 1
+      });
+      await chrome.storage.local.set({ lastNotifiedVersion: latestVersion });
+    }
+    return { ...state, currentVersion };
+  } catch (error) {
+    await chrome.storage.local.set({ lastUpdateCheck: Date.now(), lastUpdateError: error.message });
+    throw error;
+  }
+}
+
 async function geminiGenerateWithFallback(apiKey, requestedModel, prompt, imageDataUrl = null) {
   let models = [];
   try { models = await listGeminiModels(apiKey); } catch (error) {
@@ -164,10 +263,28 @@ function createContextMenus() {
   return menuSync;
 }
 
-chrome.runtime.onInstalled.addListener(() => { createContextMenus().catch(() => {}); });
-chrome.runtime.onStartup.addListener(() => { createContextMenus().catch(() => {}); });
+async function initializeExtension() {
+  await createContextMenus();
+  chrome.alarms.create(UPDATE_CHECK_ALARM, { delayInMinutes: 1, periodInMinutes: UPDATE_CHECK_INTERVAL_MINUTES });
+  const status = await getUpdateStatus();
+  await setUpdateBadge(status.updateAvailable);
+  checkForExtensionUpdate({ notify: true }).catch(() => {});
+}
+
+chrome.runtime.onInstalled.addListener(() => { initializeExtension().catch(() => {}); });
+chrome.runtime.onStartup.addListener(() => { initializeExtension().catch(() => {}); });
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName === 'local' && changes.presentationMode) createContextMenus().catch(() => {});
+});
+
+chrome.alarms.onAlarm.addListener(alarm => {
+  if (alarm.name === UPDATE_CHECK_ALARM) checkForExtensionUpdate({ notify: true }).catch(() => {});
+});
+
+chrome.notifications.onClicked.addListener(notificationId => {
+  if (!notificationId.startsWith('thrash-pass-update-')) return;
+  getUpdateStatus().then(status => chrome.tabs.create({ url: trustedUpdatePage(status.updatePageUrl) })).catch(() => {});
+  chrome.notifications.clear(notificationId).catch(() => {});
 });
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
@@ -189,7 +306,7 @@ chrome.commands.onCommand.addListener(async command => {
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (!msg || typeof msg.action !== 'string') return;
-  if (!['openFromPopup', 'syncPresentationMode', 'askAI', 'captureTab', 'listGeminiModels', 'testAI', 'insertIntoPage'].includes(msg.action)) return;
+  if (!['getUpdateStatus', 'checkForUpdates', 'openFromPopup', 'syncPresentationMode', 'askAI', 'captureTab', 'listGeminiModels', 'testAI', 'insertIntoPage'].includes(msg.action)) return;
   const respond = sendResponse;
   const keepAlive = setInterval(() => chrome.runtime.getPlatformInfo().catch(() => {}), 20000);
   const deadline = setTimeout(() => {
@@ -205,6 +322,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     clearTimeout(deadline);
     respond(value);
   };
+  if (msg.action === 'getUpdateStatus') {
+    getUpdateStatus().then(status => sendResponse({ ok: true, ...status })).catch(error => sendResponse({ ok: false, error: error.message }));
+    return true;
+  }
+  if (msg.action === 'checkForUpdates') {
+    checkForExtensionUpdate().then(status => sendResponse({ ok: true, ...status })).catch(error => sendResponse({ ok: false, error: error.message }));
+    return true;
+  }
   if (msg.action === 'openFromPopup') {
     (async () => {
       if ((await cfg()).presentationMode) throw new Error('Turn off Presentation Mode first.');

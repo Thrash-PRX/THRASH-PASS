@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 test('provider switch clears old credentials/endpoint and selects provider model',async()=>{
-  const nodes = Object.fromEntries(['provider','apiKey','model','endpoint','presentationMode','modelList','refreshModels','save','test','status','open'].map(id=>[id,{value:'',addEventListener(event,fn){this[event]=fn},replaceChildren(){},appendChild(){}}]));
+  const nodes = Object.fromEntries(['provider','apiKey','model','endpoint','presentationMode','modelList','refreshModels','save','test','status','open','updateStatus','checkUpdates','updateLink'].map(id=>[id,{value:'',hidden:false,textContent:'',addEventListener(event,fn){this[event]=fn},replaceChildren(){},appendChild(){}}]));
   const context=vm.createContext({document:{getElementById:id=>nodes[id],querySelectorAll:()=>Object.values(nodes)},chrome:{storage:{local:{get:async d=>d,set:async()=>{}}},runtime:{sendMessage:async()=>({ok:true})}}});
   vm.runInContext(fs.readFileSync('extension/settings.js','utf8'),context);
   vm.runInContext(fs.readFileSync('extension/popup.js','utf8'),context);

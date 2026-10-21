@@ -2,14 +2,16 @@
   "manifest_version": 3,
   "name": "THRASH-PASS",
   "short_name": "THRASH-PASS",
-  "version": "2.1.5",
+  "version": "2.2.0",
   "description": "Standalone browser AI assistant with resilient AI retries, editor insertion, and a presentation-safe inactive mode.",
   "permissions": [
     "storage",
     "activeTab",
     "contextMenus",
     "tabs",
-    "scripting"
+    "scripting",
+    "alarms",
+    "notifications"
   ],
   "host_permissions": [
     "https://generativelanguage.googleapis.com/*",

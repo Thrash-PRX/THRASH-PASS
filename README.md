@@ -4,7 +4,7 @@
 
 ![THRASH-PASS](docs/assets/banner.svg)
 
-Manifest V3 · Version 2.1.5 · Chrome / Chromium · No build step · Bring your own API key
+Manifest V3 · Version 2.2.0 · Chrome / Chromium · No build step · Bring your own API key
 
 ## Features
 
@@ -13,6 +13,7 @@ Manifest V3 · Version 2.1.5 · Chrome / Chromium · No build step · Bring your
 - Send visible-tab screenshots through Gemini or OpenAI with an image-capable model.
 - Copy answers, paste into the last focused editor, or insert gradually with Auto-type.
 - Presentation Mode hides the panel and blocks new page requests, captures, and insertions.
+- Checks the official repository for new versions and shows a browser notification plus a **NEW** toolbar badge.
 
 ## Install
 
@@ -22,6 +23,18 @@ Manifest V3 · Version 2.1.5 · Chrome / Chromium · No build step · Bring your
 4. Pin THRASH-PASS to the toolbar and refresh existing webpages.
 
 This is a manually installed extension, not a Chrome Web Store listing. Node.js is not needed to use it.
+
+## Update THRASH-PASS
+
+Version 2.2.0 adds update notifications. THRASH-PASS checks the repository's small `update.json` file when Chrome starts and every six hours. When a newer version is available, Chrome shows a notification and a **NEW** badge on the extension icon. You can also open the popup and click **Check for updates**.
+
+Chrome does not allow an unpacked extension to replace its own files. To install a notified update:
+
+1. Download and extract the newest repository ZIP, then copy its `extension` folder over the `extension` folder Chrome currently loads.
+2. Open `chrome://extensions`.
+3. Find THRASH-PASS and click the reload button.
+
+Using the same folder keeps the same extension installation and saved settings. If you extract to a new folder, remove the old THRASH-PASS entry before loading the new `extension` folder to avoid duplicates.
 
 ## Tutorial: Get an API key and start using THRASH-PASS
 
@@ -90,18 +103,19 @@ Turn **Presentation Mode** on in the popup when you do not want the assistant vi
 
 ## Privacy
 
-Each question sends your request **plus up to 12,000 characters of visible page text** to your configured provider. Screenshot adds the visible tab image, including any private information visible on the page; the assistant hides during capture. The package has no project-operated backend, analytics, or saved conversation history.
+Each question sends your request **plus up to 12,000 characters of visible page text** to your configured provider. Screenshot adds the visible tab image, including any private information visible on the page; the assistant hides during capture. The package has no project-operated backend, analytics, or saved conversation history. The update checker makes an anonymous request to the repository's public `update.json`; it never includes your API key, prompts, page content, or settings.
 
 Keys live in `chrome.storage.local`, not an encrypted vault. Broad HTTP/HTTPS permissions support page integration and custom endpoints. An endpoint override receives your key; use trusted endpoints. See [Privacy and permissions](docs/PRIVACY.md).
 
-## Gemini recovery (v2.1.5)
+## Gemini recovery (carried forward from v2.1.5)
 
 Leave Model blank to discover compatible Gemini models available to your account. A selected model is tried first; fallback uses discovered general-purpose models rather than a fixed list of model IDs. Discovery follows pagination, with a bounded page limit.
 
 Each request has a 25-second deadline covering headers and response-body reading. Retryable failures receive bounded retries; authentication errors stop immediately. Gemini uses up to four generation attempts across at most three candidate models. Other providers use up to two attempts.
 
-## What changed in 2.1.5
+## What changed in 2.2.0
 
+- Added background and manual update checks, a **NEW** toolbar badge, and one notification per newer version.
 - Integrated the supplied fixed build, including shared provider defaults and separate saved provider profiles.
 - Added **Open assistant on this page** to the popup.
 - Improved immediate Presentation Mode updates, screenshot handling, and editor insertion.

@@ -19,6 +19,26 @@ function showProfile(provider) {
   $('modelList').replaceChildren();
   toggleProviderFields();
 }
+function renderUpdateStatus(result) {
+  const status = $('updateStatus');
+  const link = $('updateLink');
+  if (!result?.ok) {
+    status.textContent = 'Update status unavailable' + (result?.error ? ': ' + result.error : '.');
+    link.hidden = true;
+    return;
+  }
+  if (result.updateAvailable) {
+    status.textContent = 'Version ' + result.latestVersion + ' is available. You have ' + result.currentVersion + '.';
+    link.href = result.updatePageUrl;
+    link.hidden = false;
+    return;
+  }
+  const checked = result.lastUpdateCheck ? ' Last checked ' + new Date(result.lastUpdateCheck).toLocaleString() + '.' : '';
+  status.textContent = result.lastUpdateError
+    ? 'Version ' + result.currentVersion + '. Last check failed: ' + result.lastUpdateError
+    : 'You are up to date (version ' + result.currentVersion + ').' + checked;
+  link.hidden = true;
+}
 async function load() {
   const s = await chrome.storage.local.get({ ...DEFAULTS, providerProfiles: {} });
   profiles = s.providerProfiles || {};
@@ -27,6 +47,7 @@ async function load() {
   $('provider').value = selectedProvider;
   $('presentationMode').checked = !!s.presentationMode;
   showProfile(selectedProvider);
+  renderUpdateStatus(await chrome.runtime.sendMessage({ action: 'getUpdateStatus' }));
 }
 async function saveSettings() {
   profiles[selectedProvider] = currentProfile();
@@ -77,5 +98,9 @@ $('open').onclick = () => run(async () => {
   const r = await chrome.runtime.sendMessage({ action: 'openFromPopup' });
   if (!r?.ok) throw new Error(r?.error || 'Could not open the assistant.');
   window.close();
+});
+$('checkUpdates').onclick = () => run(async () => {
+  $('updateStatus').textContent = 'Checking for a newer version…';
+  renderUpdateStatus(await chrome.runtime.sendMessage({ action: 'checkForUpdates' }));
 });
 run(load);

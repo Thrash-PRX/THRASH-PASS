@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.2.0 — 2026-10-21
+
+- Check the official repository for a newer version at browser startup and every six hours.
+- Show a Chrome notification and **NEW** toolbar badge once for each newly detected version.
+- Add a manual update check and direct update-guide link to the extension popup.
+- Preserve the supplied 2.1.5 runtime fixes and document the safe manual update flow for unpacked extensions.
+
 ## 2.1.5 — 2026-10-14
 
 - Integrate THRASH-PASS-v2.1.3-fixed.zip as the next release after 2.1.4.

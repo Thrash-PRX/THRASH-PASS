@@ -2,6 +2,10 @@
 
 Run `npm test` with Node.js 20+. No external packages or API credentials are needed.
 
+## 2.2.0 verification — 21 October 2026
+
+Package validation and all 12 repository regression tests pass. Checks include synchronized version metadata, update permissions, update version comparison, one notification per newer version, provider adapters, Presentation Mode, screenshots, insertion targeting, Gemini recovery, and original icon integrity. The supplied 2.1.5 runtime fixes remain in place.
+
 ## 2.1.5 verification — 14 October 2026
 
 Package validation and all 11 repository regression tests passed. Checks cover manifest references, shared settings/JavaScript syntax, version consistency, popup assets, original icon SHA-256 integrity, provider payload adapters, account-based Gemini discovery and bounded fallback, authentication failure handling, Presentation Mode gates, screenshot target checks, invalid endpoints, missing keys, sensitive input exclusion, and switching/restoring provider profiles.

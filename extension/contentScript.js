@@ -100,7 +100,7 @@
 
   const box = document.createElement('div');
   box.className = 'tp';
-  box.innerHTML = `<div class="head"><span>THRASH-PASS <small style="font-size:10px;color:#d8ff56">v2.1.5</small></span><span class="x">×</span></div><div class="body"><textarea class="q" placeholder="Ask anything about the selected text or page..."></textarea><div class="row"><button class="b ask">Ask AI</button><button class="b secondary shot">Screenshot</button></div><div class="mini">Uses the provider configured in the extension.</div><div class="ans" hidden></div><div class="row tools" hidden><button class="b accent paste">Paste code</button><button class="b secondary type">Auto-type</button><button class="b secondary copy">Copy</button></div><div class="status"></div></div>`;
+  box.innerHTML = `<div class="head"><span>THRASH-PASS <small style="font-size:10px;color:#d8ff56">v2.2.0</small></span><span class="x">×</span></div><div class="body"><textarea class="q" placeholder="Ask anything about the selected text or page..."></textarea><div class="row"><button class="b ask">Ask AI</button><button class="b secondary shot">Screenshot</button></div><div class="mini">Uses the provider configured in the extension.</div><div class="ans" hidden></div><div class="row tools" hidden><button class="b accent paste">Paste code</button><button class="b secondary type">Auto-type</button><button class="b secondary copy">Copy</button></div><div class="status"></div></div>`;
   shadow.append(box);
   document.documentElement.append(root);
 
