@@ -1,10 +1,15 @@
 (async () => {
   if (globalThis.__thrashPassLoaded) return;
   globalThis.__thrashPassLoaded = true;
+  const events = new AbortController();
+  const eventOptions = { capture: true, signal: events.signal };
+  let disposed = false;
+  let reloadBusy = () => false;
+  let disposeUI = () => {};
   let presentationMode = false;
   let modeRevision = 0;
   let applyMode = () => {};
-  chrome.storage.onChanged.addListener((changes, area) => {
+  const onStorageChanged = (changes, area) => {
     if (area !== 'local' || !changes.presentationMode) return;
     modeRevision++;
     presentationMode = !!changes.presentationMode.newValue;
@@ -14,7 +19,8 @@
       markedTarget = null;
     }
     applyMode();
-  });
+  };
+  chrome.storage.onChanged.addListener(onStorageChanged);
 
   const TARGET_ATTR = 'data-thrash-pass-target';
   const TARGET_TIME_ATTR = 'data-thrash-pass-target-at';
@@ -30,10 +36,25 @@
     const selection = window.getSelection();
     if (selection?.rangeCount && markedTarget.contains(selection.getRangeAt(0).commonAncestorContainer)) savedRange = selection.getRangeAt(0).cloneRange();
   }
-  document.addEventListener('selectionchange', rememberSelection, true);
-  document.addEventListener('select', rememberSelection, true);
-  document.addEventListener('keyup', rememberSelection, true);
-  chrome.runtime.onMessage.addListener((msg, sender, respond) => {
+  document.addEventListener('selectionchange', rememberSelection, eventOptions);
+  document.addEventListener('select', rememberSelection, eventOptions);
+  document.addEventListener('keyup', rememberSelection, eventOptions);
+  const onRuntimeMessage = (msg, sender, respond) => {
+    if (msg?.action === 'getReloadState') { respond({ busy: reloadBusy() }); return; }
+    if (msg?.action === 'prepareForReload') {
+      disposed = true;
+      events.abort();
+      disposeUI();
+      if (markedTarget) {
+        markedTarget.removeAttribute(TARGET_ATTR);
+        markedTarget.removeAttribute(TARGET_TIME_ATTR);
+      }
+      globalThis.__thrashPassLoaded = false;
+      chrome.storage.onChanged.removeListener(onStorageChanged);
+      chrome.runtime.onMessage.removeListener(onRuntimeMessage);
+      respond({ ok: true });
+      return;
+    }
     if (msg?.action !== 'restoreTargetSelection') return;
     if (presentationMode || !markedTarget?.isConnected) { respond({ ok: false }); return; }
     const range = savedRange;
@@ -44,7 +65,8 @@
       const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range);
     }
     respond({ ok: true });
-  });
+  };
+  chrome.runtime.onMessage.addListener(onRuntimeMessage);
 
   function isEditable(el) {
     if (!(el instanceof Element) || !el.isConnected || el.disabled || el.readOnly) return false;
@@ -72,14 +94,15 @@
     } catch (_) {}
   }
 
-  document.addEventListener('focusin', event => markTarget(event.target), true);
+  document.addEventListener('focusin', event => markTarget(event.target), eventOptions);
   document.addEventListener('pointerdown', event => {
     const candidate = event.target?.closest?.('textarea, input, [contenteditable=""], [contenteditable="true"], [role="textbox"]');
     if (candidate) markTarget(candidate);
-  }, true);
+  }, eventOptions);
 
   const revision = modeRevision;
   const initial = await chrome.storage.local.get({ presentationMode: false });
+  if (disposed) return;
   if (revision === modeRevision) presentationMode = !!initial.presentationMode;
   // Child frames only need target tracking. The visible assistant lives in the top frame.
   if (window.top !== window) return;
@@ -100,7 +123,7 @@
 
   const box = document.createElement('div');
   box.className = 'tp';
-  box.innerHTML = `<div class="head"><span>THRASH-PASS <small style="font-size:10px;color:#d8ff56">v2.2.0</small></span><span class="x">×</span></div><div class="body"><textarea class="q" placeholder="Ask anything about the selected text or page..."></textarea><div class="row"><button class="b ask">Ask AI</button><button class="b secondary shot">Screenshot</button></div><div class="mini">Uses the provider configured in the extension.</div><div class="ans" hidden></div><div class="row tools" hidden><button class="b accent paste">Paste code</button><button class="b secondary type">Auto-type</button><button class="b secondary copy">Copy</button></div><div class="status"></div></div>`;
+  box.innerHTML = `<div class="head"><span>THRASH-PASS <small style="font-size:10px;color:#d8ff56">v2.3.0</small></span><span class="x">×</span></div><div class="body"><textarea class="q" placeholder="Ask anything about the selected text or page..."></textarea><div class="row"><button class="b ask">Ask AI</button><button class="b secondary shot">Screenshot</button></div><div class="mini">Uses the provider configured in the extension.</div><div class="ans" hidden></div><div class="row tools" hidden><button class="b accent paste">Paste code</button><button class="b secondary type">Auto-type</button><button class="b secondary copy">Copy</button></div><div class="status"></div></div>`;
   shadow.append(box);
   document.documentElement.append(root);
 
@@ -115,6 +138,7 @@
   const status = shadow.querySelector('.status');
   let busy = false;
   let requestVersion = 0;
+  reloadBusy = () => busy || pasteButton.disabled || box.style.display === 'block';
   applyMode = () => {
     if (presentationMode) {
       requestVersion++;
@@ -271,8 +295,14 @@
     if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') { event.preventDefault(); ask(); }
   });
 
-  chrome.runtime.onMessage.addListener(msg => {
+  const onAssistantMessage = msg => {
     if (msg.action === 'openAssistant') open(msg.text);
     if (msg.action === 'askSelection') open(window.getSelection()?.toString() || '');
-  });
+  };
+  chrome.runtime.onMessage.addListener(onAssistantMessage);
+  disposeUI = () => {
+    requestVersion++;
+    root.remove();
+    chrome.runtime.onMessage.removeListener(onAssistantMessage);
+  };
 })();

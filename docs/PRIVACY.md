@@ -23,11 +23,13 @@ Settings and API keys use chrome.storage.local. This is not an encrypted vault; 
 | contextMenus | Page and selection entry points |
 | tabs | Active-tab lookup, messages, screenshot target check |
 | scripting | Editor discovery/insertion including frames |
-| alarms | Run an update check every six hours |
+| alarms | Check GitHub every six hours and local packaged files every minute |
 | notifications | Tell the user once when a newer version is available |
 | HTTP/HTTPS hosts | Cross-site page integration and custom endpoint requests |
 
 Broad host access and provider-specific entries are retained from the supplied build. The extension fetches version metadata from `raw.githubusercontent.com`, but never fetches or runs remote executable code. Responses are displayed as plain text and inserted only when the user clicks an insertion button.
+
+The optional Windows helper downloads new extension files separately. The extension's local watcher reads only its own packaged files, uses `pendingLocalUpdate` to remember a candidate version, and reloads the extension after current work and open panels finish. It reconnects to open webpages without refreshing those pages. The local watcher makes no additional external network requests.
 
 Presentation Mode blocks new page operations, suppresses late answers, clears editor targets, and stops auto-type on its next chunk. Requests already sent to a provider cannot be recalled. Disable/remove the extension to stop it completely. Clear and save the API key for each configured provider, or uninstall, to remove saved credentials. Use HTTPS for remote endpoints; HTTP remains supported for local servers.
 

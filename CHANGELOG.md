@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.3.0 and Windows updater 1.1.0 — 2026-10-21
+
+- Detect complete newer extension files locally on a one-minute alarm and reload automatically after two observations.
+- Wait for in-progress operations, assistant panels, and popup editing to finish before reloading.
+- Remove old page listeners and reconnect open webpages after reload without refreshing pages or clearing saved settings.
+- Add isolated Chromium integration checks and extend the Windows VM workflow to test both components. Require Chrome/Chromium 116+ for popup context detection.
+- Update Windows helper instructions and notifications for automatic reload. Older extension versions require one initial manual reload to activate the watcher.
+
 ## Windows updater 1.0.1 — 2026-10-21
 
 - Add unattended install/disable commands used to test the actual executable in a disposable Windows virtual machine.

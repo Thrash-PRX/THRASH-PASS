@@ -12,7 +12,7 @@ using System.Web.Script.Serialization;
 using System.Windows.Forms;
 
 [assembly: System.Reflection.AssemblyTitle("THRASH-PASS Updater")]
-[assembly: System.Reflection.AssemblyVersion("1.0.1.0")]
+[assembly: System.Reflection.AssemblyVersion("1.1.0.0")]
 
 public static class Updates
 {
@@ -134,7 +134,7 @@ public static class Updates
                 {
                     ExtractExtension(Download(Archive, 128 * 1024 * 1024), stage, latest);
                     Activate(stage, Extension);
-                    Log("Installed extension " + latest + ". Reload it in chrome://extensions.");
+                    Log("Installed extension " + latest + ". Automatic reload requires version 2.3.0 or newer already running in Chrome.");
                     return true;
                 }
                 finally { if (Directory.Exists(stage)) Directory.Delete(stage, true); }
@@ -184,7 +184,7 @@ public class UpdaterWindow : Form
         FormBorderStyle = FormBorderStyle.FixedDialog; MaximizeBox = false;
         BackColor = Color.FromArgb(16, 18, 22); ForeColor = Color.White; Font = new Font("Segoe UI", 10);
         Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
-        status.Text = "THRASH-PASS for Windows\n\nAutomatic file updates every six hours while signed in.\nAfter an update, reload THRASH-PASS in chrome://extensions.\nFirst install: enable Developer mode and Load unpacked.";
+        status.Text = "THRASH-PASS for Windows\n\nAutomatic file updates every six hours while signed in.\nVersion 2.3.0+ reloads itself when the assistant is idle.\nFirst setup: enable Developer mode and Load unpacked.\nExisting older installations need one initial reload.";
         Controls.Add(status);
         var panel = new FlowLayoutPanel { Dock = DockStyle.Bottom, Height = 175, FlowDirection = FlowDirection.TopDown, WrapContents = false };
         Controls.Add(panel);
@@ -197,13 +197,13 @@ public class UpdaterWindow : Form
                 bool changed = await Task.Run(() => Updates.Check());
                 Updates.Schedule(true);
                 status.Text = (changed ? "Installed version " : "Already up to date: ") + Updates.LocalVersion(Updates.Extension) +
-                    ". Automatic checks enabled.\n\nLoad this folder once using Load unpacked:\n" + Updates.Extension + "\n\nAfter later updates: click Reload in chrome://extensions.";
+                    ". Automatic checks enabled.\n\nLoad this folder once in Chrome (or reload an older installation once):\n" + Updates.Extension + "\n\nAfter setup, future updates apply automatically when the assistant and its popup are closed.";
             }
             catch (Exception error) { status.Text = "Could not finish: " + error.Message; }
             finally { install.Enabled = true; }
         };
         AddButton(panel, "Open extension folder", delegate { Directory.CreateDirectory(Updates.Extension); Process.Start("explorer.exe", "\"" + Updates.Extension + "\""); });
-        AddButton(panel, "Copy chrome://extensions", delegate { Clipboard.SetText("chrome://extensions"); status.Text = "Paste chrome://extensions into Chrome's address bar.\n\nFirst install: enable Developer mode, click Load unpacked, and select:\n" + Updates.Extension + "\n\nExisting installation: click Reload after an update."; });
+        AddButton(panel, "Copy chrome://extensions", delegate { Clipboard.SetText("chrome://extensions"); status.Text = "Paste chrome://extensions into Chrome's address bar.\n\nFirst install: enable Developer mode, click Load unpacked, and select:\n" + Updates.Extension + "\n\nOlder than 2.3.0: reload once to activate automatic reloads."; });
         AddButton(panel, "Disable automatic checks", delegate { Updates.Schedule(false); status.Text = "Automatic checks disabled. Your extension files and settings are kept."; });
     }
     void AddButton(FlowLayoutPanel panel, string label, Action action)
@@ -239,7 +239,7 @@ public static class Program
                     using (var icon = new NotifyIcon { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath), Visible = true, Text = "THRASH-PASS" })
                     {
                         icon.BalloonTipClicked += delegate { Process.Start(Updates.InstalledExe); };
-                        icon.ShowBalloonTip(8000, "THRASH-PASS updated", "New files are ready. Reload THRASH-PASS in chrome://extensions.", ToolTipIcon.Info);
+                        icon.ShowBalloonTip(8000, "THRASH-PASS files updated", "Version 2.3.0+ reloads automatically when idle. Older installations need one initial reload in chrome://extensions.", ToolTipIcon.Info);
                         var timer = new System.Windows.Forms.Timer { Interval = 10000 };
                         timer.Tick += delegate { timer.Stop(); Application.ExitThread(); };
                         timer.Start(); Application.Run(); timer.Dispose();

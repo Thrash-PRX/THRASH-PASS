@@ -4,7 +4,7 @@
 
 ![THRASH-PASS](docs/assets/banner.svg)
 
-Manifest V3 · Version 2.2.0 · Chrome / Chromium · No build step · Bring your own API key
+Manifest V3 · Version 2.3.0 · Chrome / Chromium 116+ · No build step · Bring your own API key
 
 ## Features
 
@@ -14,6 +14,7 @@ Manifest V3 · Version 2.2.0 · Chrome / Chromium · No build step · Bring your
 - Copy answers, paste into the last focused editor, or insert gradually with Auto-type.
 - Presentation Mode hides the panel and blocks new page requests, captures, and insertions.
 - Checks the official repository for new versions and shows a browser notification plus a **NEW** toolbar badge.
+- With the Windows updater, applies downloaded builds automatically when the assistant is idle, without refreshing webpages.
 
 ## Install
 
@@ -26,15 +27,17 @@ This is a manually installed extension, not a Chrome Web Store listing. Node.js 
 
 ## Update THRASH-PASS
 
-**Windows:** [Download the Windows updater](https://github.com/Thrash-PRX/THRASH-PASS/releases/download/windows-updater-v1.0.1/THRASH-PASS-Updater.exe) to download and replace extension files automatically every six hours. Run it once, then load its extension folder in Chrome. After later updates, click **Reload** in `chrome://extensions`. See the [Windows setup guide](windows/README.md) for installation, settings migration, and disabling automatic checks.
+**Windows:** [Download the Windows updater](https://github.com/Thrash-PRX/THRASH-PASS/releases/download/windows-updater-v1.1.0/THRASH-PASS-Updater.exe) to download and replace extension files automatically every six hours. Run it once, then load its extension folder in Chrome with Developer mode enabled. Starting with extension **2.3.0**, a local watcher detects complete newer files and reloads the extension automatically when its panels and popup are closed and requests have finished. Existing webpages reconnect without being refreshed, preserving their unsaved text.
 
-Version 2.2.0 adds update notifications. THRASH-PASS checks the repository's small `update.json` file when Chrome starts and every six hours. When a newer version is available, Chrome shows a notification and a **NEW** badge on the extension icon. You can also open the popup and click **Check for updates**.
+**Upgrading from 2.2.0 or earlier:** reload once in `chrome://extensions` after the updater installs 2.3.0 to activate the watcher. That one-time step cannot be handled by the older build because it does not contain the watcher. See the [Windows setup guide](windows/README.md).
 
-Chrome does not allow an unpacked extension to replace its own files. To install a notified update:
+The watcher checks local files once a minute and requires two observations of the newer build. Chrome must be running; sleeping or suspended browsers can delay these checks. Close the assistant panel and popup to allow an update to apply. Your saved settings are retained.
+
+THRASH-PASS also checks the repository's small `update.json` file at Chrome startup and every six hours to notify about available downloads. **Check for updates** in the popup performs this remote check; it does not download files. If you do not use the Windows helper, copy files manually:
 
 1. Download and extract the newest repository ZIP, then copy its `extension` folder over the `extension` folder Chrome currently loads.
 2. Open `chrome://extensions`.
-3. Find THRASH-PASS and click the reload button.
+3. If version 2.3.0+ was already running, close the assistant panel and popup and allow the watcher to apply the update. Otherwise, click Reload once.
 
 Using the same folder keeps the same extension installation and saved settings. If you extract to a new folder, remove the old THRASH-PASS entry before loading the new `extension` folder to avoid duplicates.
 
@@ -115,8 +118,11 @@ Leave Model blank to discover compatible Gemini models available to your account
 
 Each request has a 25-second deadline covering headers and response-body reading. Retryable failures receive bounded retries; authentication errors stop immediately. Gemini uses up to four generation attempts across at most three candidate models. Other providers use up to two attempts.
 
-## What changed in 2.2.0
+## What changed in 2.3.0
 
+- Automatically reload a complete newer local build while idle, then reconnect open webpages without refreshing them.
+- Defer updates during active requests, open drafts/answers, and popup editing; preserve saved settings.
+- Add tests in a real isolated Chromium profile for version changes, idle deferral, saved settings, page preservation, and duplicate panel prevention.
 - Added background and manual update checks, a **NEW** toolbar badge, and one notification per newer version.
 - Integrated the supplied fixed build, including shared provider defaults and separate saved provider profiles.
 - Added **Open assistant on this page** to the popup.
@@ -141,6 +147,8 @@ This 2-minute 49-second walkthrough shows the complete setup: installing the unp
 ## Development
 
 Run `npm test` with Node.js 20+. No dependency installation is needed. Load `extension/` directly and reload it after edits.
+
+For the optional isolated Chromium test: install `playwright@1.64.1` without saving it, run `npx playwright install chromium`, then `npm run test:browser`. It uses a temporary extension copy and browser profile, and never modifies your installed extension. Results are written to `output/playwright/`.
 
 | Folder | Purpose |
 | --- | --- |

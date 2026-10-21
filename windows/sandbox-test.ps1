@@ -27,7 +27,8 @@ function Run-Updater([string]$path, [string]$argument) {
 try {
     Run-Updater $exe '--install'
     $version = (Get-Content (Join-Path $extension 'manifest.json') -Raw | ConvertFrom-Json).version
-    Assert-Check ($version -eq (Get-Content (Join-Path $PSScriptRoot '..\update.json') -Raw | ConvertFrom-Json).version) 'Fresh installation matches published version'
+    $publishedVersion = (Invoke-RestMethod -Uri 'https://raw.githubusercontent.com/Thrash-PRX/THRASH-PASS/main/update.json').version
+    Assert-Check ($version -eq $publishedVersion) 'Fresh installation matches published version'
     Assert-Check (Test-Path -LiteralPath $installed) 'Updater copies itself into the installation folder'
     Assert-Check ((Get-FileHash $exe).Hash -eq (Get-FileHash $installed).Hash) 'Installed executable matches the tested executable'
     $task = Get-ScheduledTask -TaskName $taskName

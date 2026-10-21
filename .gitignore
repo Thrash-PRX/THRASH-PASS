@@ -7,3 +7,5 @@ node_modules/
 Thumbs.db
 coverage/
 windows/dist/
+output/playwright/
+.playwright-cli/

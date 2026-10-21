@@ -1,9 +1,10 @@
 {
   "name": "thrash-pass",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "private": true,
   "scripts": {
-    "test": "node scripts/validate.mjs && node --test tests/*.test.mjs"
+    "test": "node scripts/validate.mjs && node --test tests/*.test.mjs",
+    "test:browser": "node scripts/test-auto-reload.mjs"
   },
   "engines": {
     "node": ">=20"

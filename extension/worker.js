@@ -4,6 +4,10 @@ const TRANSIENT_STATUS = new Set([408, 429, 500, 502, 503, 504]);
 const REQUEST_TIMEOUT_MS = 25000;
 const UPDATE_CHECK_ALARM = 'thrash-pass-update-check';
 const UPDATE_CHECK_INTERVAL_MINUTES = 360;
+const LOCAL_UPDATE_ALARM = 'thrash-pass-local-update';
+let activeOperations = 0;
+let reloadInProgress = false;
+let lastOperationAt = 0;
 const UPDATE_INFO_URL = 'https://raw.githubusercontent.com/Thrash-PRX/THRASH-PASS/main/update.json';
 const UPDATE_PAGE_URL = 'https://github.com/Thrash-PRX/THRASH-PASS#update-thrash-pass';
 const UPDATE_STATE_DEFAULTS = {
@@ -266,12 +270,66 @@ function createContextMenus() {
 async function initializeExtension() {
   await createContextMenus();
   chrome.alarms.create(UPDATE_CHECK_ALARM, { delayInMinutes: 1, periodInMinutes: UPDATE_CHECK_INTERVAL_MINUTES });
+  chrome.alarms.create(LOCAL_UPDATE_ALARM, { delayInMinutes: 1, periodInMinutes: 1 });
   const status = await getUpdateStatus();
   await setUpdateBadge(status.updateAvailable);
   checkForExtensionUpdate({ notify: true }).catch(() => {});
 }
 
-chrome.runtime.onInstalled.addListener(() => { initializeExtension().catch(() => {}); });
+async function ordinaryTabs() {
+  return (await chrome.tabs.query({ url: ['http://*/*', 'https://*/*'] })).filter(tab => tab.id && /^https?:/.test(tab.url || ''));
+}
+
+async function restoreOpenTabs() {
+  for (const tab of await ordinaryTabs()) {
+    await chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, files: ['contentScript.js'] }).catch(() => {});
+  }
+}
+
+async function checkForLocalUpdate() {
+  if (activeOperations || reloadInProgress || Date.now() - lastOperationAt < 1000) return false;
+  if (chrome.runtime.getContexts && (await chrome.runtime.getContexts({ contextTypes: ['POPUP'] })).length) return false;
+  const localResource = async path => {
+    const response = await fetch(chrome.runtime.getURL(path) + '?updateCheck=' + Date.now(), { cache: 'no-store' });
+    if (!response.ok) throw new Error('Installed update is not ready.');
+    return response.text();
+  };
+  const manifest = JSON.parse(await localResource('manifest.json'));
+  if (manifest.name !== 'THRASH-PASS' || manifest.manifest_version !== 3 || compareVersions(manifest.version, chrome.runtime.getManifest().version) <= 0) return false;
+  // Require a complete package and two observations across alarm ticks. Persist the
+  // candidate because Manifest V3 workers normally sleep between those ticks.
+  for (const file of ['worker.js', 'settings.js', 'contentScript.js', 'popup.html']) {
+    if (!(await localResource(file)).trim()) return false;
+  }
+  const { pendingLocalUpdate = '' } = await chrome.storage.local.get({ pendingLocalUpdate: '' });
+  if (pendingLocalUpdate !== manifest.version) {
+    await chrome.storage.local.set({ pendingLocalUpdate: manifest.version });
+    return false;
+  }
+  const tabs = await ordinaryTabs();
+  for (const tab of tabs) {
+    const state = await chrome.tabs.sendMessage(tab.id, { action: 'getReloadState' }, { frameId: 0 }).catch(() => null);
+    if (state?.busy) return false;
+  }
+  if (activeOperations || Date.now() - lastOperationAt < 1000) return false;
+  reloadInProgress = true;
+  try {
+    for (const tab of tabs) {
+      await chrome.tabs.sendMessage(tab.id, { action: 'prepareForReload' }).catch(() => {});
+    }
+    await chrome.storage.local.remove('pendingLocalUpdate');
+    chrome.runtime.reload();
+    return true;
+  } catch (error) {
+    reloadInProgress = false;
+    throw error;
+  }
+}
+
+chrome.runtime.onInstalled.addListener(() => {
+  initializeExtension().catch(() => {});
+  restoreOpenTabs().catch(() => {});
+});
 chrome.runtime.onStartup.addListener(() => { initializeExtension().catch(() => {}); });
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName === 'local' && changes.presentationMode) createContextMenus().catch(() => {});
@@ -279,6 +337,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 
 chrome.alarms.onAlarm.addListener(alarm => {
   if (alarm.name === UPDATE_CHECK_ALARM) checkForExtensionUpdate({ notify: true }).catch(() => {});
+  if (alarm.name === LOCAL_UPDATE_ALARM) checkForLocalUpdate().catch(() => {});
 });
 
 chrome.notifications.onClicked.addListener(notificationId => {
@@ -307,10 +366,16 @@ chrome.commands.onCommand.addListener(async command => {
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (!msg || typeof msg.action !== 'string') return;
   if (!['getUpdateStatus', 'checkForUpdates', 'openFromPopup', 'syncPresentationMode', 'askAI', 'captureTab', 'listGeminiModels', 'testAI', 'insertIntoPage'].includes(msg.action)) return;
+  if (reloadInProgress) { sendResponse({ ok: false, error: 'THRASH-PASS is applying an update. Try again in a moment.' }); return; }
+  activeOperations++;
+  lastOperationAt = Date.now();
   const respond = sendResponse;
   const keepAlive = setInterval(() => chrome.runtime.getPlatformInfo().catch(() => {}), 20000);
   const deadline = setTimeout(() => {
+    if (responded) return;
     responded = true;
+    activeOperations--;
+    lastOperationAt = Date.now();
     clearInterval(keepAlive);
     respond({ ok: false, error: 'Operation timed out. Please try a smaller request.' });
   }, 240000);
@@ -318,6 +383,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   sendResponse = value => {
     if (responded) return;
     responded = true;
+    activeOperations--;
+    lastOperationAt = Date.now();
     clearInterval(keepAlive);
     clearTimeout(deadline);
     respond(value);

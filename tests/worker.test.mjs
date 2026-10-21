@@ -7,8 +7,8 @@ function harness(settings = {}, response = {choices:[{message:{content:'OK'}}]})
   let listener; const calls = []; const notifications = []; let captures = 0;
   const event = {addListener(){}};
   const chrome = {
-    storage:{local:{get: async defaults => ({...defaults, ...settings}),set:async values=>Object.assign(settings,values)},onChanged:event},
-    runtime:{getManifest:()=>({version:'2.2.0'}),onInstalled:event,onStartup:event,onMessage:{addListener(fn){listener=fn}}},
+    storage:{local:{get: async defaults => ({...defaults, ...settings}),set:async values=>Object.assign(settings,values),remove:async key=>delete settings[key]},onChanged:event},
+    runtime:{getManifest:()=>({version:'2.3.0'}),getURL:path=>'chrome-extension://test/'+path,reload(){},onInstalled:event,onStartup:event,onMessage:{addListener(fn){listener=fn}}},
     action:{setBadgeBackgroundColor:async()=>{},setBadgeText:async()=>{}},
     alarms:{create(){},onAlarm:event},notifications:{create:async(id,options)=>notifications.push({id,options}),clear:async()=>{},onClicked:event},
     contextMenus:{removeAll(cb){cb()},create(){},onClicked:event}, commands:{onCommand:event},
@@ -105,11 +105,58 @@ test('authentication failures are never retried',async()=>{
 
 test('update checker detects newer semantic versions and notifies only once',async()=>{
   const settings={};const h=harness(settings);
-  h.context.fetch=async()=>({ok:true,text:async()=>JSON.stringify({version:'2.3.0',page:'https://github.com/Thrash-PRX/THRASH-PASS/releases'})});
+  h.context.fetch=async()=>({ok:true,text:async()=>JSON.stringify({version:'2.4.0',page:'https://github.com/Thrash-PRX/THRASH-PASS/releases'})});
   const first=await vm.runInContext('checkForExtensionUpdate({notify:true})',h.context);
-  assert.equal(first.updateAvailable,true);assert.equal(first.latestVersion,'2.3.0');assert.equal(h.notifications.length,1);
+  assert.equal(first.updateAvailable,true);assert.equal(first.latestVersion,'2.4.0');assert.equal(h.notifications.length,1);
   await vm.runInContext('checkForExtensionUpdate({notify:true})',h.context);
   assert.equal(h.notifications.length,1);
   assert.equal(vm.runInContext("compareVersions('2.2.0','2.2.0')",h.context),0);
   assert.equal(vm.runInContext("compareVersions('2.2.1','2.2.0')",h.context),1);
+});
+
+function localUpdateHarness() {
+  const h=harness();let reloads=0;
+  h.chrome.runtime.reload=()=>reloads++;
+  h.chrome.tabs.query=async()=>[{id:7,url:'https://example.test'}];
+  h.chrome.tabs.sendMessage=async()=>({busy:false});
+  h.context.fetch=async url=>({ok:true,text:async()=>url.includes('manifest.json')
+    ? JSON.stringify({name:'THRASH-PASS',manifest_version:3,version:'2.4.0'}) : 'installed package contents'});
+  return {...h,get reloads(){return reloads}};
+}
+test('local updater reloads only after observing a complete newer package twice',async()=>{
+  const h=localUpdateHarness();
+  assert.equal(await vm.runInContext('checkForLocalUpdate()',h.context),false);
+  assert.equal(h.reloads,0);
+  assert.equal(await vm.runInContext('checkForLocalUpdate()',h.context),true);
+  assert.equal(h.reloads,1);
+});
+test('local updater waits for an open assistant or popup to close',async()=>{
+  const h=localUpdateHarness();
+  await vm.runInContext('checkForLocalUpdate()',h.context);
+  h.chrome.tabs.sendMessage=async()=>({busy:true});
+  assert.equal(await vm.runInContext('checkForLocalUpdate()',h.context),false);
+  h.chrome.tabs.sendMessage=async()=>({busy:false});
+  h.chrome.runtime.getContexts=async()=>[{contextType:'POPUP'}];
+  assert.equal(await vm.runInContext('checkForLocalUpdate()',h.context),false);
+  assert.equal(h.reloads,0);
+  h.chrome.runtime.getContexts=async()=>[];
+  assert.equal(await vm.runInContext('checkForLocalUpdate()',h.context),true);
+});
+test('local updater ignores unchanged versions and incomplete packages',async()=>{
+  const h=localUpdateHarness();
+  h.context.fetch=async()=>({ok:true,text:async()=>JSON.stringify({name:'THRASH-PASS',manifest_version:3,version:'2.3.0'})});
+  assert.equal(await vm.runInContext('checkForLocalUpdate()',h.context),false);
+  h.context.fetch=async url=>({ok:url.includes('manifest.json'),text:async()=>JSON.stringify({name:'THRASH-PASS',manifest_version:3,version:'2.4.0'})});
+  await assert.rejects(vm.runInContext('checkForLocalUpdate()',h.context),/not ready/);
+  assert.equal(h.reloads,0);
+});
+test('local updater defers while an AI request is active',async()=>{
+  const h=localUpdateHarness();let finish;
+  h.context.callAI=()=>new Promise(resolve=>{finish=resolve});
+  const pending=h.send({action:'askAI',prompt:'question'});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(await vm.runInContext('checkForLocalUpdate()',h.context),false);
+  assert.equal(h.reloads,0);
+  finish('answer');
+  assert.equal((await pending).answer,'answer');
 });
