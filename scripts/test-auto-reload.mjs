@@ -63,9 +63,9 @@ try {
   // rather than relying only on a Preferences file written by the test harness.
   const manager = await context.newPage();
   await manager.goto('chrome://extensions');
-  const developerMode = manager.getByRole('button', { name: 'Developer mode', exact: true });
-  if (await developerMode.getAttribute('aria-pressed') !== 'true') await developerMode.click();
-  check(await developerMode.getAttribute('aria-pressed') === 'true', 'Developer mode is enabled during the initial setup');
+  const developerMode = manager.locator('extensions-toolbar #devMode');
+  if (!(await developerMode.evaluate(toggle => toggle.checked))) await developerMode.click();
+  check(await developerMode.evaluate(toggle => toggle.checked), 'Developer mode is enabled during the initial setup');
   await manager.close();
   let worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker');
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -116,6 +116,14 @@ try {
   await fs.mkdir('output/playwright', { recursive: true });
   await fs.writeFile('output/playwright/auto-reload-results.json', JSON.stringify({ browser: context.browser().version(), checks: results }, null, 2));
   console.log('All ' + results.length + ' isolated Chromium checks passed.');
+} catch (error) {
+  console.error('Browser version:', context?.browser().version());
+  if (context) {
+    const diagnostic = await context.newPage();
+    await diagnostic.goto('chrome://extensions');
+    console.error(await diagnostic.locator('body').ariaSnapshot());
+  }
+  throw error;
 } finally {
   await context?.close();
   if (server.listening) await new Promise(resolve => server.close(resolve));
