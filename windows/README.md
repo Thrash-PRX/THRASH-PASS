@@ -1,6 +1,6 @@
 # THRASH-PASS Windows updater
 
-[Download THRASH-PASS-Updater.exe](https://github.com/Thrash-PRX/THRASH-PASS/releases/download/windows-updater-v1.0.0/THRASH-PASS-Updater.exe)
+[Download THRASH-PASS-Updater.exe](https://github.com/Thrash-PRX/THRASH-PASS/releases/download/windows-updater-v1.0.1/THRASH-PASS-Updater.exe)
 
 For Windows 10/11 with .NET Framework 4.5 or later. No Node.js, Python, or administrator access is required. This executable is unsigned; Windows may show a publisher warning. The complete source and build script are in this folder.
 
@@ -38,3 +38,7 @@ windows\dist\UpdaterTests.exe --live-download
 ```
 
 The build uses the Windows .NET Framework compiler and produces `windows/dist/THRASH-PASS-Updater.exe`. Tests cover version ordering, invalid metadata, archive traversal, extension-only extraction, mismatched versions, atomic replacement, and rollback. The optional live test downloads the current GitHub archive into a temporary directory without changing scheduled tasks or installed extension files. The original extension icons remain byte-for-byte unchanged; the executable uses a Windows-compatible icon derived at build time.
+
+The Windows workflow also runs `sandbox-test.ps1` in a disposable GitHub-hosted Windows VM. It installs the actual executable, verifies the task command and six-hour schedule, upgrades a simulated older build from GitHub, runs the task through Task Scheduler, and disables it. The script refuses to run outside the hosted VM. Test results and the updater log are included with the workflow artifact. This verifies Windows file updates and scheduling; Chrome loading/reloading and visible notification delivery still depend on the user's browser and Windows notification settings.
+
+For unattended setup, the executable supports `--install` (install files and enable scheduled checks) and `--disable-updates` (remove the scheduled task). Both return a nonzero exit code on failure and record errors in `updater.log`.

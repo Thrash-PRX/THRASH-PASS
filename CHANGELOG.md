@@ -1,5 +1,11 @@
 # Changelog
 
+## Windows updater 1.0.1 — 2026-10-21
+
+- Add unattended install/disable commands used to test the actual executable in a disposable Windows virtual machine.
+- Verify fresh installation, executable copying, six-hour limited-privilege scheduling, background updates, previous-build backup, Task Scheduler execution, disabling, and cleanup.
+- Retain the executable and test evidence in the Windows workflow artifact; document the test scope and Chrome reload requirement.
+
 ## Windows updater 1.0.0 — 2026-10-21
 
 - Add a standalone Windows executable that installs the extension in a fixed per-user folder and schedules automatic file updates every six hours while signed in.
