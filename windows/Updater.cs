@@ -12,7 +12,7 @@ using System.Web.Script.Serialization;
 using System.Windows.Forms;
 
 [assembly: System.Reflection.AssemblyTitle("THRASH-PASS Updater")]
-[assembly: System.Reflection.AssemblyVersion("1.0.0.0")]
+[assembly: System.Reflection.AssemblyVersion("1.0.1.0")]
 
 public static class Updates
 {
@@ -220,6 +220,16 @@ public static class Program
     public static int Main(string[] args)
     {
         Application.EnableVisualStyles();
+        if (Array.IndexOf(args, "--install") >= 0 || Array.IndexOf(args, "--disable-updates") >= 0)
+        {
+            try
+            {
+                if (Array.IndexOf(args, "--install") >= 0) { Updates.Check(); Updates.Schedule(true); }
+                else Updates.Schedule(false);
+                return 0;
+            }
+            catch (Exception error) { try { Updates.Log("Setup failed: " + error.Message); } catch { } return 1; }
+        }
         if (Array.IndexOf(args, "--background") >= 0)
         {
             try

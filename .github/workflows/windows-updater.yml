@@ -18,7 +18,14 @@ jobs:
       - name: Build and test
         shell: powershell
         run: .\windows\build.ps1
+      - name: Test installation and automatic updates in disposable Windows VM
+        shell: powershell
+        run: .\windows\sandbox-test.ps1
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: THRASH-PASS-Windows-Updater
-          path: windows/dist/THRASH-PASS-Updater.exe
+          path: |
+            windows/dist/THRASH-PASS-Updater.exe
+            windows/dist/sandbox-results.json
+            ~/AppData/Local/THRASH-PASS/updater.log
