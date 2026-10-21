@@ -26,6 +26,8 @@ This is a manually installed extension, not a Chrome Web Store listing. Node.js 
 
 ## Update THRASH-PASS
 
+**Windows:** [Download the Windows updater](https://github.com/Thrash-PRX/THRASH-PASS/releases/download/windows-updater-v1.0.0/THRASH-PASS-Updater.exe) to download and replace extension files automatically every six hours. Run it once, then load its extension folder in Chrome. After later updates, click **Reload** in `chrome://extensions`. See the [Windows setup guide](windows/README.md) for installation, settings migration, and disabling automatic checks.
+
 Version 2.2.0 adds update notifications. THRASH-PASS checks the repository's small `update.json` file when Chrome starts and every six hours. When a newer version is available, Chrome shows a notification and a **NEW** badge on the extension icon. You can also open the popup and click **Check for updates**.
 
 Chrome does not allow an unpacked extension to replace its own files. To install a notified update:

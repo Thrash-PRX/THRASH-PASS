@@ -1,5 +1,12 @@
 # Changelog
 
+## Windows updater 1.0.0 — 2026-10-21
+
+- Add a standalone Windows executable that installs the extension in a fixed per-user folder and schedules automatic file updates every six hours while signed in.
+- Validate downloaded archive paths, extension identity, and advertised version before replacement; retain a previous build and restore it if activation fails.
+- Notify when files are updated, document the Chrome reload step, and provide a button to disable scheduled checks.
+- Include the complete C# source, repeatable Windows build, automated updater tests, and GitHub Actions build workflow. Extension runtime remains at 2.2.0.
+
 ## 2.2.0 — 2026-10-21
 
 - Check the official repository for a newer version at browser startup and every six hours.
