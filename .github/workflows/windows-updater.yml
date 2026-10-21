@@ -28,4 +28,4 @@ jobs:
           path: |
             windows/dist/THRASH-PASS-Updater.exe
             windows/dist/sandbox-results.json
-            ~/AppData/Local/THRASH-PASS/updater.log
+            windows/dist/updater.log

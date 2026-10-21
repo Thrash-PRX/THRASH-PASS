@@ -71,5 +71,8 @@ try {
 }
 finally {
     if (Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue) { Unregister-ScheduledTask -TaskName $taskName -Confirm:$false }
+    if (Test-Path -LiteralPath (Join-Path $root 'updater.log')) {
+        Copy-Item -LiteralPath (Join-Path $root 'updater.log') -Destination (Join-Path $PSScriptRoot 'dist\updater.log')
+    }
     # The disposable runner deletes the files at job completion; retain them as failure evidence.
 }
